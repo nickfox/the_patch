@@ -1,256 +1,269 @@
 #!/usr/bin/env python3
 """
 Cross-model latent communication test:
-  Qwen3-4B (sender/thinker) → Gemma-2-2B (receiver/solver) 
+  Qwen3-4B (sender) → Gemma-2-9B (receiver)
 
-Qwen does the latent thinking, its hidden states are projected
-into Gemma's embedding space, and Gemma generates the answer.
+Single forward pass through Qwen captures hidden states at the target layer.
+These are projected into Gemma's space via the selected adapter (Procrustes,
+MLP, CCA, or residual) and injected into Gemma at the target receiver layer.
+Gemma generates an answer from the injected latents only (no question text).
 """
 
+import argparse
+import json
 import mlx.core as mx
 import mlx_lm
 import time
+import os
+from mlx_lm.models.base import create_attention_mask
 from mlx_lm.models.cache import make_prompt_cache
-from cross_align import compute_cross_alignment, apply_cross_realignment
-from prompts import build_prompt
-from utils import extract_boxed_answer, normalize_answer, extract_gold
+from mlxmas.cross_align import apply_cross_realignment
+from mlxmas.contextual_procrustes import load_alignment
+from mlxmas.cross_comm import generate_with_cross_latents_from_layer
+from mlxmas.utils import extract_boxed_answer, normalize_answer
 
 
-QUESTIONS = [
-    {
-        "question": "Janet's ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?",
-        "gold": "18",
-    },
-    {
-        "question": "A robe takes 2 bolts of blue fiber and half that much white fiber. How many bolts in total does it take?",
-        "gold": "3",
-    },
-    {
-        "question": "If there are 3 cars in the parking lot and 2 more cars arrive, how many cars are in the parking lot?",
-        "gold": "5",
-    },
-]
+def load_gsm8k_test(max_samples=-1):
+    """Load GSM8K test set questions with gold answers."""
+    import re
+    import random
+    from datasets import load_dataset
+    ds = load_dataset("gsm8k", "main", split="test")
+    questions = []
+    for item in ds:
+        gold_match = re.search(r"####\s*([-+]?\d+(?:\.\d+)?)", item["answer"])
+        gold = gold_match.group(1) if gold_match else None
+        questions.append({
+            "question": item["question"].strip(),
+            "gold": gold,
+        })
+    random.shuffle(questions)
+    if max_samples > 0:
+        questions = questions[:max_samples]
+    return questions
 
-AGENTS = ["planner", "critic", "refiner"]
-
-
-def collect_sender_hidden_states(model, tokenizer, prompt_text, cache,
-                                 latent_steps, W_a_self, target_norm_self):
-    """Run prompt through sender model and collect self-aligned hidden states.
-    
-    Each hidden state is projected back to the sender's embedding space
-    via self-alignment before collection. This is necessary because the
-    cross-alignment matrix maps embedding↔embedding, not hidden↔embedding.
-    
-    Returns: [1, num_collected, D_sender] in sender's embedding space.
-    """
-    from latent_comm import apply_realignment
-    
-    tokens = tokenizer.encode(prompt_text, add_special_tokens=False)
-    input_ids = mx.array([tokens])
-    
-    # Forward through sender's transformer (no lm_head)
-    hidden = model.model(input_ids, cache=cache)
-    mx.eval(hidden, *[c.state for c in cache])
-    
-    # Self-align the last hidden state back to embedding space
-    last_hidden = hidden[:, -1:, :]
-    aligned = apply_realignment(last_hidden, W_a_self, target_norm_self)
-    collected = [aligned]
-    
-    # Latent thought loop — collect self-aligned states
-    for step in range(latent_steps):
-        aligned = apply_realignment(last_hidden, W_a_self, target_norm_self)
-        hidden = model.model(None, cache=cache, input_embeddings=aligned)
-        mx.eval(hidden, *[c.state for c in cache])
-        last_hidden = hidden[:, -1:, :]
-        # Collect the ALIGNED version (in sender's embedding space)
-        aligned_step = apply_realignment(last_hidden, W_a_self, target_norm_self)
-        collected.append(aligned_step)
-    
-    # Stack into [1, num_collected, D_sender]
-    all_hidden = mx.concatenate(collected, axis=1)
-    mx.eval(all_hidden)
-    return all_hidden
-
-
-def gemma_forward_with_embeddings(model, input_embeddings, cache):
-    """Run Gemma-2 forward pass with pre-computed embeddings.
-    
-    Gemma-2's MLX model doesn't have input_embeddings parameter,
-    so we manually replicate the forward pass, bypassing embed_tokens.
-    Gemma-2 scales embeddings by sqrt(hidden_size) — we apply this.
-    Also applies Gemma-2's logit soft-capping.
-    """
-    from mlx_lm.models.base import create_attention_mask
-    
-    h = input_embeddings * (model.model.args.hidden_size ** 0.5)
-    
-    if cache is None:
-        cache = [None] * len(model.model.layers)
-    
-    mask = create_attention_mask(h, cache[0], return_array=True)
-    
-    for layer, c in zip(model.model.layers, cache):
-        h = layer(h, mask, c)
-    
-    h = model.model.norm(h)
-    
-    # Tied embeddings + logit soft-capping (Gemma-2 specific)
-    out = model.model.embed_tokens.as_linear(h)
-    out = mx.tanh(out / model.final_logit_softcapping)
-    out = out * model.final_logit_softcapping
-    
-    return out
-
-
-def generate_with_cross_latents(receiver_model, receiver_tokenizer,
-                                 projected_embeddings, question,
-                                 max_tokens=1024, temperature=0.6):
-    """Feed projected latent embeddings to receiver and generate answer.
-    
-    1. Create fresh cache for receiver
-    2. Feed projected embeddings (builds receiver's KV cache)
-    3. Feed the judger prompt tokens
-    4. Generate text autoregressively
-    """
-    from mlx_lm.sample_utils import make_sampler
-    
-    cache = make_prompt_cache(receiver_model)
-    
-    # Step 1: Feed projected latent thoughts through Gemma
-    # This builds the receiver's KV cache with the sender's "reasoning"
-    logits = gemma_forward_with_embeddings(
-        receiver_model, projected_embeddings, cache
+def create_parser():
+    """Create argument parser for cross-model test."""
+    parser = argparse.ArgumentParser(
+        description="Cross-model latent communication test: Qwen3-4B → Gemma-2"
     )
-    mx.eval(logits, *[c.state for c in cache])
-    print(f"    Latent prefill done, cache offset: {cache[0].offset}")
-    
-    # Step 2: Feed judger prompt as normal tokens
-    judger_prompt = (
-        f"<start_of_turn>user\n"
-        f"You have been given latent reasoning context about the following question. "
-        f"Use it to solve the problem step by step.\n\n"
-        f"Question: {question}\n\n"
-        f"Put your final numerical answer inside \\boxed{{}}.\n"
-        f"<end_of_turn>\n<start_of_turn>model\n"
-    )
-    tokens = receiver_tokenizer.encode(judger_prompt, add_special_tokens=False)
-    input_ids = mx.array([tokens])
-    
-    # Normal forward pass for the text prompt (uses standard model path)
-    logits = receiver_model(input_ids, cache=cache)
-    mx.eval(logits, *[c.state for c in cache])
-    print(f"    Judger prompt prefilled, cache offset: {cache[0].offset}")
-    
-    # Step 3: Autoregressive generation
-    sampler = make_sampler(temp=temperature, top_p=0.95)
-    generated_tokens = []
-    next_logits = logits[:, -1, :]
-    eos_token = receiver_tokenizer.eos_token_id
-    
-    for _ in range(max_tokens):
-        token = sampler(next_logits)
-        token_id = token.item()
-        if token_id == eos_token:
-            break
-        generated_tokens.append(token_id)
-        next_input = mx.array([[token_id]])
-        next_logits = receiver_model(next_input, cache=cache)
-        next_logits = next_logits[:, -1, :]
-        mx.eval(next_logits, *[c.state for c in cache])
-    
-    return receiver_tokenizer.decode(generated_tokens)
+    parser.add_argument("--receiver", default="mlx-community/gemma-2-2b-it-8bit",
+                        help="Receiver model (default: gemma-2-2b-it-8bit)")
+    parser.add_argument("--adapter", choices=["procrustes", "mlp", "cca", "residual"],
+                        default="procrustes", help="Alignment method")
+    parser.add_argument("--adapter-path", type=str, default=None,
+                        help="Path to adapter/alignment .npz (auto-discovered if None)")
+    parser.add_argument("--start-layer", type=int, default=12,
+                        help="Gemma receiver layer to inject at (default 12)")
+    parser.add_argument("--sender-layer", type=int, default=13,
+                        help="Qwen sender layer to extract from (default 13)")
+    parser.add_argument("--max-tokens", type=int, default=2048,
+                        help="Maximum tokens to generate")
+    parser.add_argument("--max-samples", type=int, default=50,
+                        help="Number of GSM8K test questions to evaluate (default 50, -1 for all)")
+    parser.add_argument("--temperature", type=float, default=0.6,
+                        help="Sampling temperature")
+    return parser
 
 
 def main():
-    sender_name = "mlx-community/Qwen3-4B-4bit"
-    receiver_name = "mlx-community/gemma-2-2b-it-4bit"
-    # Use 8-bit for alignment computation
-    align_sender = "mlx-community/Qwen3-4B-8bit"
-    align_receiver = "mlx-community/gemma-2-2b-it-8bit"
-    latent_steps = 10
-    
-    # Step 1: Compute cross-alignment with 8-bit models
-    print("=== Computing cross-alignment matrix (8-bit models) ===")
-    t0 = time.time()
-    model_a_8, tok_a_8 = mlx_lm.load(align_sender)
-    model_b_8, tok_b_8 = mlx_lm.load(align_receiver)
-    alignment = compute_cross_alignment(model_a_8, tok_a_8, model_b_8, tok_b_8)
-    W_ab = alignment["W_ab"]
-    mean_a = alignment["mean_a"]
-    mean_b = alignment["mean_b"]
-    target_norm_b = alignment["target_norm_b"]
-    # Free 8-bit models
-    del model_a_8, model_b_8, tok_a_8, tok_b_8
-    mx.clear_cache()
-    print(f"Alignment computed in {time.time()-t0:.1f}s\n")
-    
-    # Step 2: Load inference models (4-bit)
-    print(f"=== Loading inference models ===")
+    parser = create_parser()
+    args = parser.parse_args()
+
+    sender_name = "mlx-community/Qwen3-4B-8bit"
+    receiver_name = args.receiver
+
+    # Step 1: Load alignment / adapter
+    adapter_type = args.adapter
+    method_name = f"{adapter_type}_S{args.sender_layer}_R{args.start_layer}"
+
+    if adapter_type == "mlp":
+        from mlxmas.mlp_adapter import load_mlp_adapter, apply_mlp_adapter
+        adapter_path = args.adapter_path
+        if adapter_path is None:
+            adapter_path = os.path.join(
+                os.path.dirname(__file__), "data",
+                f"mlp_adapter_S{args.sender_layer}_R{args.start_layer}.npz"
+            )
+        if not os.path.exists(adapter_path):
+            print(f"MLP adapter not found: {adapter_path}")
+            print(f"Train one first with train_mlp_adapter.py")
+            return
+        print(f"=== Loading MLP adapter from {adapter_path} ===")
+        mlp_adapter, mlp_meta = load_mlp_adapter(adapter_path)
+        print(f"  Val cosine: {mlp_meta['val_cosine']:.4f}")
+        print(f"  Val MSE: {mlp_meta['val_mse']:.6f}")
+
+    elif adapter_type == "cca":
+        from mlxmas.cca_adapter import load_cca, apply_cca
+        adapter_path = args.adapter_path
+        if adapter_path is None:
+            adapter_path = os.path.join(
+                os.path.dirname(__file__), "data",
+                f"cca_adapter_S{args.sender_layer}_R{args.start_layer}_K512.npz"
+            )
+        if not os.path.exists(adapter_path):
+            print(f"CCA adapter not found: {adapter_path}")
+            print(f"Fit one first with cca_adapter.py")
+            return
+        print(f"=== Loading CCA adapter from {adapter_path} ===")
+        cca_Wa, cca_Wb, cca_mu_x, cca_mu_y, cca_target_norm, cca_meta = load_cca(adapter_path)
+        print(f"  K={cca_meta['K']}, top correlation: {cca_meta['top_correlation']:.4f}, "
+              f"mean: {cca_meta['mean_correlation']:.4f}")
+
+    elif adapter_type == "residual":
+        from mlxmas.residual_adapter import load_adapter, apply_adapter
+        adapter_path = args.adapter_path
+        if adapter_path is None:
+            adapter_path = os.path.join(
+                os.path.dirname(__file__), "data",
+                f"adapter_S{args.sender_layer}_R{args.start_layer}.npz"
+            )
+        if not os.path.exists(adapter_path):
+            print(f"Residual adapter not found: {adapter_path}")
+            return
+        print(f"=== Loading residual adapter from {adapter_path} ===")
+        res_adapter, W_base, mean_a, mean_b, target_norm_b, res_meta = load_adapter(adapter_path)
+        print(f"  Baseline cosine: {res_meta['baseline_cosine']:.4f}")
+        print(f"  Adapter val cosine: {res_meta['adapter_val_cosine']:.4f}")
+
+    else:  # procrustes
+        procrustes_path = args.adapter_path
+        if procrustes_path is None:
+            procrustes_path = os.path.join(
+                os.path.dirname(__file__), "data",
+                f"procrustes_S{args.sender_layer}_R{args.start_layer}_multitoken.npz"
+            )
+        if not os.path.exists(procrustes_path):
+            print(f"Procrustes alignment file not found: {procrustes_path}")
+            print(f"Run calibration first:")
+            print(f"  python -m mlxmas.contextual_procrustes "
+                  f"--sender_layer {args.sender_layer} "
+                  f"--receiver_layer {args.start_layer}")
+            return
+        print(f"=== Loading Procrustes alignment from {procrustes_path} ===")
+        alignment = load_alignment(procrustes_path)
+        W_ab = alignment["W_ortho"]
+        mean_a = alignment["mean_a"]
+        mean_b = alignment["mean_b"]
+        target_norm_b = alignment["target_norm_b"]
+        if "heldout_cosine" in alignment:
+            print(f"  Held-out cosine: {alignment['heldout_cosine']:.4f}, "
+                  f"train cosine: {alignment['train_cosine']:.4f}")
+        elif "cos_sim" in alignment:
+            print(f"  Calibration cosine: {alignment['cos_sim']:.4f}")
+        if "sender_layer" in alignment:
+            print(f"  Layers: sender={alignment['sender_layer']}, "
+                  f"receiver={alignment['receiver_layer']}")
+        print(f"  W shape: {W_ab.shape}")
+
+    # Step 2: Load models (8-bit)
+    print(f"\n=== Loading inference models (8-bit) ===")
     print(f"Sender: {sender_name}")
     sender_model, sender_tok = mlx_lm.load(sender_name)
-    
-    # Compute sender's self-alignment (hidden→embedding for Qwen)
-    from latent_comm import compute_alignment
-    W_a_self, target_norm_self = compute_alignment(sender_model)
-    print(f"Sender self-alignment ready")
-    
+
     print(f"Receiver: {receiver_name}")
     receiver_model, receiver_tok = mlx_lm.load(receiver_name)
+
+    # Load test questions
+    questions = load_gsm8k_test(max_samples=args.max_samples)
+    print(f"\nLoaded {len(questions)} GSM8K test questions")
     print()
-    
+
     # Step 3: Run test questions
-    for i, item in enumerate(QUESTIONS):
+    correct = 0
+    total_start = time.time()
+    for i, item in enumerate(questions):
         question = item["question"]
         gold = item["gold"]
         print(f"==================== Question #{i+1} ====================")
         print(f"Q: {question[:100]}...")
         print(f"Gold: {gold}")
-        
+
         t0 = time.time()
-        
-        # Sender (Qwen) does latent thinking
-        all_agent_hidden = []
+
+        # Sender (Qwen): single forward pass, capture at sender_layer
+        tokens = sender_tok.encode(question, add_special_tokens=True)
+        input_ids = mx.array([tokens])
         sender_cache = make_prompt_cache(sender_model)
-        
-        for role in AGENTS:
-            prompt = build_prompt(sender_tok, role, question)
-            hidden = collect_sender_hidden_states(
-                sender_model, sender_tok, prompt,
-                sender_cache, latent_steps,
-                W_a_self, target_norm_self,
-            )
-            all_agent_hidden.append(hidden)
-            print(f"  [{role}] collected {hidden.shape[1]} hidden states")
-        
-        # Concatenate all agents' hidden states
-        sender_hidden = mx.concatenate(all_agent_hidden, axis=1)
+        h = sender_model.model.embed_tokens(input_ids)
+        mask = create_attention_mask(h, sender_cache[0], return_array=True)
+        for li, (layer, c) in enumerate(zip(sender_model.model.layers, sender_cache)):
+            h = layer(h, mask, c)
+            if li == args.sender_layer:
+                sender_hidden = h.astype(mx.float32)
+                break
         mx.eval(sender_hidden)
-        print(f"  Total sender hidden: {sender_hidden.shape}")
-        
-        # Project into Gemma's embedding space
-        projected = apply_cross_realignment(
-            sender_hidden, W_ab, mean_a, mean_b, target_norm_b
-        )
+        print(f"  Sender hidden: {sender_hidden.shape}")
+
+        # Project into Gemma's layer-{start_layer} space
+        if adapter_type == "mlp":
+            projected = apply_mlp_adapter(sender_hidden, mlp_adapter)
+        elif adapter_type == "cca":
+            projected = apply_cca(sender_hidden, cca_Wa, cca_Wb, cca_mu_x, cca_mu_y, cca_target_norm)
+        elif adapter_type == "residual":
+            projected = apply_adapter(
+                sender_hidden, res_adapter, W_base, mean_a, mean_b, target_norm_b
+            )
+        else:
+            projected = apply_cross_realignment(
+                sender_hidden, W_ab, mean_a, mean_b, target_norm_b
+            )
         mx.eval(projected)
         print(f"  Projected to receiver space: {projected.shape}")
-        
-        # Gemma generates answer using Qwen's latent thoughts
-        print(f"  Generating with receiver (Gemma)...")
-        output = generate_with_cross_latents(
+
+        # Inject at start_layer + 1: the adapter/alignment targets the OUTPUT
+        # of start_layer, so the projected vectors should enter at the NEXT layer.
+        # Feeding them into start_layer would double-process through that layer.
+        inject_layer = args.start_layer + 1
+        print(f"  Generating with receiver (Gemma, inject at layer {inject_layer} "
+              f"[adapter targets L{args.start_layer} output])...")
+        output = generate_with_cross_latents_from_layer(
             receiver_model, receiver_tok,
-            projected, question,
-            max_tokens=512, temperature=0.6,
+            projected,
+            start_layer=inject_layer,
+            max_tokens=args.max_tokens,
+            temperature=args.temperature,
         )
-        
+
         elapsed = time.time() - t0
         pred = normalize_answer(extract_boxed_answer(output))
-        ok = (pred == gold) if (pred and gold) else False
-        
+        ok = False
+        if pred and gold:
+            try:
+                ok = float(pred) == float(gold)
+            except (ValueError, TypeError):
+                ok = (pred == gold)
+        if ok:
+            correct += 1
+
         print(f"\n[Gemma output]\n{output[:500]}\n")
         print(f"Result: Pred={pred} | Gold={gold} | OK={ok} | Time={elapsed:.1f}s")
+        print(f"Running: {correct}/{i+1} = {100*correct/(i+1):.0f}%")
         print()
+
+    total_time = time.time() - total_start
+    total = len(questions)
+    acc = correct / total if total > 0 else 0.0
+
+    print(f"\n{'='*60}")
+    print(f"FINAL: {correct}/{total} = {acc*100:.0f}% accuracy")
+    print(f"Method: {method_name}")
+    print(f"Baseline (vocab LS, L0→L0): 1/5 = 20%")
+    print(f"{'='*60}")
+
+    print(json.dumps({
+        "method": method_name,
+        "sender": sender_name,
+        "receiver": receiver_name,
+        "sender_layer": args.sender_layer,
+        "start_layer": args.start_layer,
+        "accuracy": acc,
+        "correct": correct,
+        "total": total,
+        "total_time_sec": round(total_time, 2),
+        "time_per_sample_sec": round(total_time / total, 2),
+    }, ensure_ascii=False))
 
 
 if __name__ == "__main__":

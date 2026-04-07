@@ -27,7 +27,7 @@ class LatentMASMethod:
         model: ModelWrapper,
         *,
         latent_steps: int = 10,
-        judger_max_new_tokens: int = 256,
+        judger_max_new_tokens: int = 2048,
         temperature: float = 0.7,
         top_p: float = 0.95,
         generate_bs: int = 1,
@@ -113,7 +113,10 @@ class LatentMASMethod:
         agent_traces: List[List[Dict]] = [[] for _ in range(batch_size)]
         final_texts = ["" for _ in range(batch_size)]
 
+        import time as _time
         for agent in self.agents:
+            _t0 = _time.time()
+            print(f"  [{agent.role}] starting...", flush=True)
 
             if self.args.prompt == "sequential":
                 batch_messages = [
@@ -164,6 +167,9 @@ class LatentMASMethod:
                     tokens_to_keep = self.latent_steps if self.latent_only else tokens_added
                     past_kv = self._truncate_past(past_kv, tokens_to_keep)
 
+                _elapsed = _time.time() - _t0
+                print(f"  [{agent.role}] done ({_elapsed:.1f}s, cache={_past_length(past_kv)} tokens)", flush=True)
+
                 for idx in range(batch_size):
                     mask = wrapped_mask[idx].bool()
                     trimmed_ids = wrapped_ids[idx][mask].to("cpu").tolist()
@@ -199,6 +205,7 @@ class LatentMASMethod:
                 for ids_row, mask_row in zip(judger_ids, judger_mask):
                     active_ids = ids_row[mask_row.bool()].tolist()
                     judger_tokens_batch.append(self.model.tokenizer.convert_ids_to_tokens(active_ids))
+                print(f"    generating (max {self.judger_max_new_tokens} tokens)...", flush=True)
                 generated_batch, _ = self.model.generate_text_batch(
                     judger_ids,
                     judger_mask,
@@ -207,6 +214,8 @@ class LatentMASMethod:
                     top_p=self.top_p,
                     past_key_values=past_for_decoding,
                 )
+                _elapsed = _time.time() - _t0
+                print(f"  [{agent.role}] done ({_elapsed:.1f}s)", flush=True)
                 for idx in range(batch_size):
                     final_text = generated_batch[idx].strip()
                     final_texts[idx] = final_text

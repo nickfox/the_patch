@@ -10,7 +10,7 @@ class BaselineMethod:
         self,
         model: ModelWrapper,
         *,
-        max_new_tokens: int = 256,
+        max_new_tokens: int = 2048,
         temperature: float = 0.7,
         top_p: float = 0.95,
         generate_bs: int = 1,

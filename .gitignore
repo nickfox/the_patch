@@ -59,6 +59,19 @@ coverage.xml
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# Model data / weights / artifacts
+*.npz
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+mlxmas/data/
+logs/
+sweep_results.json
+uv.lock
+conversation_history.txt
+
 # IDEs (Optional but recommended)
 .vscode/
 .idea/

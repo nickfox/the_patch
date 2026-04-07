@@ -21,6 +21,7 @@ def _default_dtype() -> torch.dtype:
 
 
 def _ensure_pad_token(tokenizer: AutoTokenizer) -> None:
+    tokenizer.padding_side = "left"
     if tokenizer.pad_token_id is None:
         if tokenizer.eos_token is not None:
             tokenizer.pad_token = tokenizer.eos_token
@@ -160,7 +161,7 @@ class ModelWrapper:
         self,
         prompts: List[str],
         *,
-        max_new_tokens: int = 256,
+        max_new_tokens: int = 2048,
         temperature: float = 0.7,
         top_p: float = 0.95,
     ) -> List[str]:
@@ -238,7 +239,7 @@ class ModelWrapper:
         input_ids: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
         *,
-        max_new_tokens: int = 256,
+        max_new_tokens: int = 2048,
         temperature: float = 0.7,
         top_p: float = 0.95,
         past_key_values: Optional[Tuple] = None,
@@ -280,6 +281,25 @@ class ModelWrapper:
                     device=self.device,
                 )
                 generate_kwargs["cache_position"] = cache_position
+        import time as _time
+
+        class _ProgressStreamer:
+            """Print token count every 50 tokens during generation."""
+            def __init__(self):
+                self.count = 0
+                self.start = _time.time()
+            def put(self, value):
+                self.count += value.shape[-1] if hasattr(value, 'shape') else 1
+                if self.count % 50 == 0:
+                    elapsed = _time.time() - self.start
+                    tps = self.count / elapsed if elapsed > 0 else 0
+                    print(f"    ...{self.count} tokens ({tps:.0f} tok/s)", flush=True)
+            def end(self):
+                elapsed = _time.time() - self.start
+                tps = self.count / elapsed if elapsed > 0 else 0
+                print(f"    ...{self.count} tokens total ({tps:.0f} tok/s)", flush=True)
+
+        generate_kwargs["streamer"] = _ProgressStreamer()
         outputs = self.model.generate(**generate_kwargs)
         sequences = outputs.sequences
         generations: List[str] = []

@@ -160,22 +160,25 @@ def apply_cross_realignment(hidden: mx.array, W_cross: mx.array,
                              mean_sender: mx.array, mean_receiver: mx.array,
                              target_norm: mx.array) -> mx.array:
     """Project hidden state from sender's space into receiver's embedding space.
-    
-    Uses centered alignment: subtract sender mean, project, add receiver mean.
-    
-    Args:
-        hidden: [1, 1, D_sender] or [1, D_sender] hidden state from sender
-        W_cross: [D_sender, D_receiver] cross-alignment matrix
-        mean_sender: [1, D_sender] sender embedding centroid
-        mean_receiver: [1, D_receiver] receiver embedding centroid
-        target_norm: scalar, average embedding norm in receiver's space
+
+    W_cross was computed on L2-normalized embeddings. We L2-normalize input
+    for directional accuracy, but preserve the original per-vector norms
+    scaled to the receiver's operating range. This maintains the dynamic
+    range that the receiver's attention mechanism needs.
     """
     h = hidden.astype(mx.float32)
-    # Center in sender space, project, uncenter in receiver space
-    projected = (h - mean_sender) @ W_cross + mean_receiver
-    norm = mx.linalg.norm(projected, axis=-1, keepdims=True)
-    norm = mx.maximum(norm, mx.array(1e-6))
-    projected = projected * (target_norm / norm)
+    # Capture original norms (the dynamic range IS information)
+    orig_norms = mx.linalg.norm(h, axis=-1, keepdims=True)
+    # L2-normalize to match W_cross's training space
+    h_norm = h / (orig_norms + 1e-8)
+    # Project direction in normalized space
+    projected = h_norm @ W_cross
+    # Restore per-vector dynamic range, scaled from sender's norm space
+    # to receiver's norm space
+    mean_sender_norm = mx.mean(orig_norms)
+    scale = orig_norms / (mean_sender_norm + 1e-8) * target_norm
+    proj_dir = projected / (mx.linalg.norm(projected, axis=-1, keepdims=True) + 1e-8)
+    projected = proj_dir * scale
     return projected.astype(hidden.dtype)
 
 

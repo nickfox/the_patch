@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-MLX LatentMAS — Latent multi-agent reasoning on Apple Silicon.
+MLX LatentMAS — Same-model latent communication on Apple Silicon.
+
+Sender reads the question → single forward pass → KV cache
+Receiver gets ONLY the latent context (no question text) → generates answer
 
 Usage:
-    python run.py --model Qwen/Qwen3-4B --task gsm8k --max_samples 5 --latent_steps 10
+    python run.py --model mlx-community/Qwen3-4B-8bit --max_samples 5
 """
 
 import argparse
@@ -13,18 +16,14 @@ import json
 import mlx.core as mx
 import mlx_lm
 from mlx_lm.models.cache import make_prompt_cache
+from mlx_lm.sample_utils import make_sampler
 
-from latent_comm import compute_alignment, latent_forward, generate_with_cache
-from prompts import build_prompt, build_prompt_hierarchical
 from utils import extract_boxed_answer, normalize_answer, extract_gold
 
 
-SEQUENTIAL_AGENTS = ["planner", "critic", "refiner"]       # judger decodes text
-HIERARCHICAL_AGENTS = ["math_agent", "science_agent", "code_agent"]  # task_summarizer decodes
-
-
 def load_gsm8k(split="test", max_samples=-1):
-    """Load GSM8K dataset."""
+    """Load GSM8K dataset, shuffled."""
+    import random
     from datasets import load_dataset
     ds = load_dataset("gsm8k", "main", split=split)
     items = []
@@ -33,79 +32,106 @@ def load_gsm8k(split="test", max_samples=-1):
         solution = item["answer"]
         gold = normalize_answer(extract_gold(solution))
         items.append({"question": question, "solution": solution, "gold": gold})
-        if max_samples > 0 and len(items) >= max_samples:
-            break
+    random.shuffle(items)
+    if max_samples > 0:
+        items = items[:max_samples]
     return items
 
 
-def run_latent_mas(model, tokenizer, question: str, latent_steps: int,
-                   W_a, target_norm, use_realign: bool = True,
-                   max_tokens: int = 1024, temperature: float = 0.6,
-                   prompt_mode: str = "sequential") -> str:
-    """Run full LatentMAS pipeline on a single question.
+def build_sender_prompt(tokenizer, question: str) -> str:
+    """Sender prompt: reads the question and reasons about it."""
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": (
+            f"Think carefully about the following question step by step.\n\n"
+            f"Question: {question}\n\n"
+            f"Reason through this problem thoroughly."
+        )},
+    ]
+    return tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
 
-    Sequential: Planner → Critic → Refiner (latent) → Judger (text)
-    Hierarchical: Math → Science → Code (latent) → Summarizer (text)
-    """
-    # Fresh KV cache for this question
+
+def build_receiver_prompt(tokenizer, no_think=False) -> str:
+    """Receiver prompt: NO question text, only instruction to use latent context."""
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": (
+            "Using the reasoning context provided, solve the problem step by step. "
+            "Put your final numerical answer inside \\boxed{}."
+        )},
+    ]
+    prompt = tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    if no_think:
+        prompt += "<think>\n\n</think>\n\n"
+    return prompt
+
+
+def run_latent_comm(model, tokenizer, question: str,
+                    max_tokens: int = 2048, temperature: float = 0.6,
+                    no_think: bool = False) -> str:
+    """Sender reads question → KV cache → receiver generates from latents only."""
     cache = make_prompt_cache(model)
 
-    if prompt_mode == "hierarchical":
-        agents = HIERARCHICAL_AGENTS
-        judger_role = "task_summarizer"
-        prompt_fn = build_prompt_hierarchical
-    else:
-        agents = SEQUENTIAL_AGENTS
-        judger_role = "judger"
-        prompt_fn = build_prompt
+    # Sender: single forward pass, populates KV cache
+    sender_prompt = build_sender_prompt(tokenizer, question)
+    tokens = tokenizer.encode(sender_prompt, add_special_tokens=False)
+    input_ids = mx.array([tokens])
+    model.model(input_ids, cache=cache)
+    mx.eval(*[c.state for c in cache])
+    print(f"  [sender] cache offset: {cache[0].offset}", flush=True)
 
-    # Latent agents: each builds on the accumulated KV cache
-    for role in agents:
-        prompt = prompt_fn(tokenizer, role, question)
-        cache = latent_forward(
-            model, tokenizer, prompt, cache,
-            latent_steps=latent_steps,
-            W_a=W_a, target_norm=target_norm,
-            use_realign=use_realign,
-        )
-        print(f"  [{role}] cache offset: {cache[0].offset}")
+    # Receiver: generates answer from latent context only (no question)
+    receiver_prompt = build_receiver_prompt(tokenizer, no_think=no_think)
+    tokens = tokenizer.encode(receiver_prompt, add_special_tokens=False)
+    input_ids = mx.array([tokens])
+    logits = model(input_ids, cache=cache)
+    mx.eval(logits, *[c.state for c in cache])
 
-    # Final agent: generates text using accumulated latent context
-    judger_prompt = prompt_fn(tokenizer, judger_role, question)
-    output = generate_with_cache(
-        model, tokenizer, judger_prompt, cache,
-        max_tokens=max_tokens, temperature=temperature,
-    )
-    return output
+    # Autoregressive generation
+    sampler = make_sampler(temp=temperature, top_p=0.95)
+    generated_tokens = []
+    next_logits = logits[:, -1, :]
+    eos_token = tokenizer.eos_token_id
+
+    for i in range(max_tokens):
+        token = sampler(next_logits)
+        token_id = token.item()
+        if token_id == eos_token:
+            break
+        generated_tokens.append(token_id)
+        if (i + 1) % 50 == 0:
+            print(f"    ...{i + 1} tokens", flush=True)
+        next_input = mx.array([[token_id]])
+        next_logits = model(next_input, cache=cache)
+        next_logits = next_logits[:, -1, :]
+        mx.eval(next_logits, *[c.state for c in cache])
+
+    return tokenizer.decode(generated_tokens)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MLX LatentMAS")
-    parser.add_argument("--model", type=str, default="Qwen/Qwen3-4B",
+    parser = argparse.ArgumentParser(description="MLX LatentMAS — sender→receiver")
+    parser.add_argument("--model", type=str, default="mlx-community/Qwen3-4B-8bit",
                         help="HuggingFace model name")
     parser.add_argument("--task", type=str, default="gsm8k", choices=["gsm8k"])
     parser.add_argument("--max_samples", type=int, default=5)
-    parser.add_argument("--latent_steps", type=int, default=10)
-    parser.add_argument("--max_tokens", type=int, default=1024)
+    parser.add_argument("--max_tokens", type=int, default=2048)
     parser.add_argument("--temperature", type=float, default=0.6)
-    parser.add_argument("--prompt", type=str, default="sequential",
-                        choices=["sequential", "hierarchical"],
-                        help="Agent architecture: sequential (planner/critic/refiner) "
-                             "or hierarchical (math/science/code)")
-    parser.add_argument("--realign", action="store_true",
-                        help="Use full realignment matrix (vs norm-match only)")
+    parser.add_argument("--no-think", action="store_true",
+                        help="Skip Qwen's <think> block on the receiver")
     args = parser.parse_args()
 
-    print(f"Loading model: {args.model}")
+    print(f"Loading model: {args.model}", flush=True)
     model, tokenizer = mlx_lm.load(args.model)
-    print(f"Model loaded. Computing alignment matrix...")
+    print(f"Model loaded.\n", flush=True)
 
-    W_a, target_norm = compute_alignment(model)
-    print(f"Alignment matrix ready. target_norm={target_norm.item():.4f}")
-
-    print(f"Loading {args.task} dataset...")
+    print(f"Loading {args.task} dataset...", flush=True)
     items = load_gsm8k(max_samples=args.max_samples)
-    print(f"Loaded {len(items)} items. Starting evaluation.\n")
+    print(f"Loaded {len(items)} items. Starting evaluation.\n", flush=True)
 
     correct = 0
     total = len(items)
@@ -113,17 +139,14 @@ def main():
 
     for i, item in enumerate(items):
         q_start = time.time()
-        print(f"==================== Problem #{i+1}/{total} ====================")
-        print(f"Q: {item['question'][:120]}...")
+        print(f"==================== Problem #{i+1}/{total} ====================", flush=True)
+        print(f"Q: {item['question'][:120]}...", flush=True)
 
-        output = run_latent_mas(
+        output = run_latent_comm(
             model, tokenizer, item["question"],
-            latent_steps=args.latent_steps,
-            W_a=W_a, target_norm=target_norm,
-            use_realign=args.realign,
             max_tokens=args.max_tokens,
             temperature=args.temperature,
-            prompt_mode=args.prompt,
+            no_think=args.no_think,
         )
 
         pred = normalize_answer(extract_boxed_answer(output))
@@ -133,19 +156,21 @@ def main():
             correct += 1
 
         elapsed = time.time() - q_start
-        print(f"[Judger output]\n{output}\n")
+        print(f"[Receiver output]\n{output}\n")
         print(f"Result: Pred={pred} | Gold={gold} | OK={ok} | Time={elapsed:.1f}s")
+        print(f"Running: {correct}/{i+1} = {100*correct/(i+1):.0f}%")
         print()
 
     total_time = time.time() - start_time
     acc = correct / total if total > 0 else 0.0
 
+    print(f"\n{'='*60}")
+    print(f"FINAL: {correct}/{total} = {acc*100:.0f}% accuracy")
+    print(f"{'='*60}")
+
     print(json.dumps({
-        "method": "mlx_latent_mas",
+        "method": "latent_comm",
         "model": args.model,
-        "prompt": args.prompt,
-        "latent_steps": args.latent_steps,
-        "realign": args.realign,
         "accuracy": acc,
         "correct": correct,
         "total": total,

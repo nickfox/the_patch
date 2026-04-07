@@ -1,0 +1,4181 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2868
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue108;\red71\green71\blue71;
+\red255\green255\blue255;\red49\green49\blue49;\red149\green149\blue149;\red123\green123\blue123;\red71\green71\blue71;
+\red255\green255\blue255;\red0\green0\blue0;\red149\green149\blue149;\red123\green123\blue123;\red66\green69\blue75;
+}
+{\*\expandedcolortbl;;\csgray\c0;\cspthree\c5\c0\c47875;\csgray\c34900;
+\csgray\c100000;\csgray\c25100;\csgray\c65100;\csgray\c55700;\cspthree\c34900\c34900\c34900;
+\cspthree\c100000\c100000\c100000;\cspthree\c0\c0\c0;\cspthree\c65100\c65100\c65100;\cspthree\c55700\c55700\c55700;\cspthree\c33117\c34061\c36275;
+}
+\margl1440\margr1440\vieww12480\viewh9600\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs28\fsmilli14346 \cf2 Enabling Agents to Communicate Entirely in Latent Space\
+
+\fs23\fsmilli11955 Zhuoyun Du
+\fs15\fsmilli7970 1\'86* 
+\fs23\fsmilli11955 Runze Wang
+\fs15\fsmilli7970 2\'86 
+\fs23\fsmilli11955 Huiyu Bai
+\fs15\fsmilli7970 3 
+\fs23\fsmilli11955 Zouying Cao
+\fs15\fsmilli7970 4\
+
+\fs23\fsmilli11955 Xiaoyong Zhu
+\fs15\fsmilli7970 2 
+\fs23\fsmilli11955 Yu Cheng
+\fs15\fsmilli7970 2 
+\fs23\fsmilli11955 Bo Zheng
+\fs15\fsmilli7970 2 
+\fs23\fsmilli11955 Wei Chen
+\fs15\fsmilli7970 1 
+\fs23\fsmilli11955 Haochao Ying
+\fs15\fsmilli7970 1\
+1
+\fs23\fsmilli11955 Zhejiang University 
+\fs15\fsmilli7970 2
+\fs23\fsmilli11955 Taobao & Tmail Group of Alibaba\
+
+\fs15\fsmilli7970 3
+\fs23\fsmilli11955 Nanyang Technological University 
+\fs15\fsmilli7970 4
+\fs23\fsmilli11955 Shanghai Jiao Tong University\
+\{duzy, haochaoying\}@zju.edu.cn, yunze.wrz@alibaba-inc.com\
+Abstract\
+
+\fs20\fsmilli10062 While natural language is the de facto com-\
+
+\fs20\fsmilli10027 munication medium for LLM-based agents, it\
+
+\fs20\fsmilli10062 presents a fundamental constraint. The pro-\
+
+\fs19\fsmilli9863 cess of downsampling rich, internal latent states\
+
+\fs19\fsmilli9948 into discrete tokens inherently limits the depth\
+
+\fs19\fsmilli9863 and nuance of information that can be transmit-\
+
+\fs20\fsmilli10062 ted, thereby hindering collaborative problem-\
+
+\fs19\fsmilli9923 solving. Inspired by telepathy, which bypasses\
+
+\fs19\fsmilli9978 symbolic language in communication, we pro-\
+
+\fs20\fsmilli10017 pose Interlat (
+\fs19\fsmilli9963 Inter
+\fs20\fsmilli10017 -agent 
+\fs19\fsmilli9963 Lat
+\fs20\fsmilli10017 ent Space Com-\
+
+\fs19\fsmilli9863 munication), a paradigm that leverages the con-\
+
+\fs20\fsmilli10062 tinuous last hidden states of an LLM as a rep-\
+resentation of its thought for direct commu-\
+nication (termed \'93latent communication\'94).\
+
+\fs19\fsmilli9893 An additional learned compression process fur-\
+
+\fs20\fsmilli10062 ther compresses latent communication via la-\
+
+\fs19\fsmilli9863 tent space reasoning. Experiments demonstrate\
+
+\fs19\fsmilli9908 that Interlat outperforms both fine-tuned chain-\
+
+\fs20\fsmilli10057 of-thought (CoT) prompting and single-agent\
+
+\fs20\fsmilli10062 baselines, even across heterogeneous models,\
+promoting more exploratory behavior and en-\
+
+\fs19\fsmilli9868 abling genuine utilization of latent information.\
+
+\fs19\fsmilli9988 Further compression not only substantially ac-\
+
+\fs19\fsmilli9863 celerates inference by up to 24
+\fs19\fsmilli9963 \'d7
+\fs19\fsmilli9863 but also main-\
+
+\fs19\fsmilli9988 tains competitive performance through an effi-\
+
+\fs20\fsmilli10062 cient information-preserving mechanism. We\
+position this work as a feasibility study of en-\
+
+\fs20\fsmilli10042 tirely latent space inter-agent communication,\
+
+\fs20\fsmilli10062 and our results highlight its potential, offer-\
+ing valuable insights for future research. Our\
+
+\fs19\fsmilli9898 code is available at \cf3 https://github.com/XiaoDu-\
+
+\fs19\fsmilli9963 flying/Interlat\cf2 .\
+
+\fs21\fsmilli10909 \'93We do not have organs of\
+communication. Our brains can display\
+our thoughts to the outside world,\
+thereby achieving communication.\'94\
+\'97 Cixin Liu, The Dark Forest.\
+
+\fs11\fsmilli5978 \'86
+\fs17\fsmilli8966 Equal Contribution.\
+
+\fs11\fsmilli5978 \uc0\u8727 
+\fs17\fsmilli8966 Work done during an internship at Alibaba Group.\
+Corresponding Authors.\
+
+\fs23\fsmilli11955 1 Introduction\
+
+\fs22\fsmilli11018 Large language model (LLM)-based agentic sys-\
+tems have emerged as a promising paradigm for\
+solving complex tasks by orchestrating multi-\
+ple agents through natural language communica-\
+
+\fs21\fsmilli10876 tion (\cf3 Wang et al.\cf2 , \cf3 2025\cf2 , \cf3 2024\cf2 ; \cf3 Zhang et al.\cf2 , \cf3 2024b\cf2 ;\
+
+\fs22\fsmilli11018 \cf3 Tran et al.\cf2 , \cf3 2025\cf2 ). Despite its human readability,\
+
+\fs21\fsmilli10915 natural language imposes fundamental constraints\
+
+\fs22\fsmilli11018 on inter-agent communication. To communicate,\
+
+\fs21\fsmilli10887 an agent must compress its rich, high-dimensional\
+
+\fs22\fsmilli11018 internal states into a sequence of discrete tokens,\
+typically exposing only a single linear message\
+(i.e., a chain of thought (CoT) (\cf3 Wei et al.\cf2 , \cf3 2022\cf2 )\
+
+\fs21\fsmilli10980 plan). This downsampling not only discards alter-\
+
+\fs21\fsmilli10985 native reasoning paths, but also incurs substantial\
+
+\fs22\fsmilli11018 redundancy, as much of the generated text serves\
+
+\fs21\fsmilli10833 linguistic coherence rather than task-relevant infor-\
+
+\fs21\fsmilli10800 mation (\cf3 Zhang et al.\cf2 , \cf3 2024a\cf2 ). As a result, language-\
+
+\fs21\fsmilli10833 based communication can be ambiguous and lossy,\
+
+\fs21\fsmilli10969 which has been identified as a major source of co-\
+
+\fs22\fsmilli11018 ordination failures in multi-agent systems (\cf3 Chen\
+
+\fs21\fsmilli10909 et al.\cf2 , \cf3 2025\cf2 ; \cf3 Cemri et al.\cf2 , \cf3 2025\cf2 ).\
+
+\fs21\fsmilli10800 To move beyond language space, we explore the\
+
+\fs22\fsmilli11007 direct transmission of internal representations for\
+
+\fs21\fsmilli10975 more precise and information-preserving commu-\
+
+\fs22\fsmilli11018 nication. In multi-agent settings, we refer to this\
+
+\fs21\fsmilli10985 as latent communication. While direct sharing is\
+
+\fs22\fsmilli11018 challenging for humans, which is often depicted\
+
+\fs21\fsmilli10947 in fictions (\cf3 Liu\cf2 , \cf3 2008\cf2 ), i.e., telepathy, LLM-based\
+
+\fs22\fsmilli11018 agents naturally perform most of their computa-\
+
+\fs21\fsmilli10931 tion in latent space and produce rich hidden states\
+
+\fs22\fsmilli11018 throughout generation, which can be extracted to\
+support direct, expressive communication. Previ-\
+ous hidden-state-based communication methods\
+
+\fs21\fsmilli10800 either rely on one-shot activation grafting (\cf3 Ramesh\
+
+\fs22\fsmilli11018 and Li\cf2 , \cf3 2025\cf2 ) or remain coupled to language tra-\
+
+\fs21\fsmilli10985 jectories (\cf3 Tang et al.\cf2 , \cf3 2025\cf2 ), and typically require\
+
+\fs21\fsmilli10909 ad-hoc layer selection, adding tuning overhead.\
+
+\fs22\fsmilli11018 In this work, we propose Interlat, a novel\
+framework that realizes this vision by enabling\
+
+\fs21\fsmilli10909 1
+\fs24 \cf0 \page 
+\fs21\fsmilli10871 \cf2 inter-agent communication entirely in latent space.\
+
+\fs22\fsmilli11018 Rather than transmitting discrete tokens decoded\
+
+\fs21\fsmilli10800 by the language head, Interlat directly transmits the\
+
+\fs22\fsmilli11018 temporally aligned last-layer hidden states corre-\
+
+\fs21\fsmilli10822 sponding to an agent\'92s generated message, treating\
+
+\fs22\fsmilli11018 them as a representation of its thoughts. Under\
+
+\fs21\fsmilli10898 this formulation, we design a supervised objective\
+
+\fs22\fsmilli11018 that explicitly encourages the interpretation and\
+
+\fs21\fsmilli10849 utilization of task-relevant latent information, with\
+
+\fs21\fsmilli10942 a simple but effective stochastic token\'96latent mix-\
+
+\fs22\fsmilli11018 ing curriculum to stabilize training. To overcome\
+the rigidity of full-trajectory message communi-\
+cation while preserving information integrity, we\
+further train a separate reasoning process that au-\
+
+\fs21\fsmilli10996 toregressively generates compact latent messages\
+
+\fs21\fsmilli10980 with a controllable number of generation steps di-\
+
+\fs21\fsmilli10800 rectly in latent space, without decoding to language\
+space tokens. This allows Interlat to compress long\
+
+\fs22\fsmilli11018 reasoning trajectories into concise latent prefixes,\
+
+\fs21\fsmilli10942 substantially improving efficiency while retaining\
+
+\fs21\fsmilli10800 task-critical information for downstream execution.\
+Experimentally, we focus on a two-agent sender-\
+
+\fs22\fsmilli11018 receiver scenario, which is the building block of\
+
+\fs21\fsmilli10947 various multi-agent systems. To reduce confound-\
+
+\fs22\fsmilli11018 ing factors, we intentionally exclude components\
+such as tool use, retrieval, or multi-round debate.\
+
+\fs21\fsmilli10800 Analysis reveals that agents utilizing latent commu-\
+nication exhibit more exploratory behavior patterns\
+
+\fs21\fsmilli10811 that lead to higher success rates by leveraging task-\
+
+\fs22\fsmilli11018 relevant latent information rather than superficial\
+
+\fs21\fsmilli10991 pattern matching. Moreover, we demonstrate that\
+
+\fs22\fsmilli11002 latent messages can be compressed to as few as 8\
+
+\fs21\fsmilli10800 tokens while maintaining competitive performance,\
+achieving up to a 
+\fs21\fsmilli10909 24\'d7
+\fs21\fsmilli10800 reduction in communication\
+
+\fs21\fsmilli10985 latency. Further analysis of the output probability\
+
+\fs22\fsmilli11018 distribution after compression reveals how task-\
+
+\fs21\fsmilli10909 critical information is effectively preserved.\
+Contributions\
+\'95 
+\fs21\fsmilli10800 We propose Interlat, a framework that enables\
+
+\fs22\fsmilli11018 inter-agent communication entirely in latent\
+space by directly transmitting last-layer hid-\
+
+\fs21\fsmilli10909 den states instead of language space tokens.\
+\'95 
+\fs22\fsmilli11018 We design a stable training framework that\
+allows agents to interpret latent communica-\
+
+\fs21\fsmilli10909 tion effectively, without parameter sharing or\
+architectural coupling.\
+\'95 
+\fs22\fsmilli11018 We show that latent communication can pro-\
+
+\fs21\fsmilli10800 mote exploration and reliance on task-relevant\
+
+\fs22\fsmilli11018 structure, while remaining compatible with\
+aggressive compression and large inference\
+
+\fs21\fsmilli10909 speedups.\
+
+\fs23\fsmilli11955 2 Related Work\
+
+\fs22\fsmilli11018 Latent Reasoning in LLMs. Recent research\
+
+\fs21\fsmilli10800 has begun shifting reasoning processes from the dis-\
+
+\fs21\fsmilli10849 crete language space to continuous latent represen-\
+
+\fs21\fsmilli10800 tations, bypassing the bandwidth and efficiency lim-\
+
+\fs22\fsmilli11018 its of text (
+\fs21\fsmilli10909 \uc0\u8776 15 
+\fs22\fsmilli11018 bits/token vs. 
+\fs21\fsmilli10909 \uc0\u8776 40
+\fs22\fsmilli11018 k bits/hidden-\
+
+\fs21\fsmilli10958 state) (\cf3 Zhu et al.\cf2 , \cf3 2025b\cf2 ). To expand computation\
+
+\fs22\fsmilli11018 during inference, (\cf3 Goyal et al.\cf2 , \cf3 2023\cf2 ) introduces\
+pause tokens, while (\cf3 Pfau et al.\cf2 , \cf3 2024\cf2 ) employs\
+
+\fs21\fsmilli10800 filler tokens to scaffold intermediate reasoning. Be-\
+
+\fs21\fsmilli10887 yond token scheduling, (\cf3 Liu et al.\cf2 , \cf3 2024\cf2 ) proposes\
+
+\fs21\fsmilli10985 a latent coprocessor that modifies the transformer\
+
+\fs22\fsmilli11018 KV cache. Other work (\cf3 Hao et al.\cf2 , \cf3 2024\cf2 ; \cf3 Shen\
+
+\fs21\fsmilli10855 et al.\cf2 , \cf3 2025\cf2 ; \cf3 Cheng and Van Durme\cf2 , \cf3 2024\cf2 ) enables\
+
+\fs22\fsmilli11018 multi-path parallel reasoning by feeding the last\
+hidden state back as the next input embedding.\
+
+\fs21\fsmilli10980 Modular frameworks (\cf3 Bae et al.\cf2 , \cf3 2024\cf2 ; \cf3 Gao et al.\cf2 ,\
+
+\fs21\fsmilli10931 \cf3 2024\cf2 ; \cf3 Geiping et al.\cf2 , \cf3 2025\cf2 ) decouple encoding, la-\
+
+\fs21\fsmilli10876 tent reasoning, and decoding. Building upon these\
+
+\fs22\fsmilli11018 insights, we shift focus from single-model latent\
+
+\fs21\fsmilli10800 reasoning to inter-agent communication entirely in\
+
+\fs21\fsmilli10909 latent space.\
+
+\fs22\fsmilli11018 Multi-agent Communication. LLM-based\
+agent systems typically orchestrate in natural\
+language (\cf3 Zhu et al.\cf2 , \cf3 2025a\cf2 ; \cf3 Wang et al.\cf2 , \cf3 2024\cf2 ),\
+which can introduce ambiguity and computa-\
+tional overhead (\cf3 Zhang et al.\cf2 , \cf3 2024a\cf2 ; \cf3 Yu et al.\cf2 ,\
+\cf3 2024\cf2 ; \cf3 Cemri et al.\cf2 , \cf3 2025\cf2 ; \cf3 Chen et al.\cf2 , \cf3 2025\cf2 ).\
+Emergent communication studies (\cf3 Lazaridou\
+et al.\cf2 , \cf3 2016\cf2 , \cf3 2018\cf2 ; \cf3 Tucker et al.\cf2 , \cf3 2021\cf2 , \cf3 2022\cf2 )\
+show that non-linguistic protocols can emerge,\
+yet depend on channels learned from scratch\
+and disconnected from internal reasoning. Re-\
+cent work explores richer forms: (\cf3 Pham et al.\cf2 ,\
+\cf3 2023\cf2 ) transmits probability-weighted tokenizer\
+embeddings; (\cf3 Ramesh and Li\cf2 , \cf3 2025\cf2 ) blends\
+hidden activations between agents; and (\cf3 Tang\
+
+\fs21\fsmilli10936 et al.\cf2 , \cf3 2025\cf2 ) communicates per-token latent deltas\
+
+\fs22\fsmilli11018 tied to language trajectories.(\cf3 Zheng et al.\cf2 , \cf3 2025\cf2 )\
+infers latent \'93thoughts\'94 from hidden states via\
+an autoencoder and injects them as prefixes\
+using recovered dependencies. Unlike these\
+works, our method directly transmits temporally\
+
+\fs21\fsmilli10893 aligned sequences of last hidden states and further\
+
+\fs21\fsmilli10838 compresses them to enable efficient, language-free\
+
+\fs21\fsmilli10822 communication. Interlat preserves agent autonomy\
+
+\fs22\fsmilli11018 by requiring no parameter sharing (\cf3 Christianos\
+et al.\cf2 , \cf3 2021\cf2 ), memory coupling (\cf3 Salemi et al.\cf2 ,\
+
+\fs21\fsmilli10909 2
+\fs24 \cf0 \page 
+\fs10\fsmilli5421 \cf4 [Prompt]\
+
+\fs11\fsmilli5999 \cf2 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +1 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +2\
+
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +1 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +2 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407 \
+
+\fs11\fsmilli5999 \cf4 Discrete tokens (\uc0\u8776 15 bits/token)\
+\uc0\u8594  Constrained expressive range\
+
+\fs13\fsmilli6650 Language Space Communication\
+
+\fs11\fsmilli5999 \cf2 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +1 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +2 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407 +1\
+
+\fs10\fsmilli5421 encode\
+
+\fs13\fsmilli6650 \cf5 Reasoning Model 
+\fs11\fsmilli5999 \cf2 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +1 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +2 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407 +1\
+
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407 +1\
+
+\fs11\fsmilli5999 First, identify the key entity \'85 then \'85\
+\uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +1 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +2\
+
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407 \
+
+\fs10\fsmilli5421 \cf4 [Prompt]\
+
+\fs13\fsmilli6650 \cf5 Reasoning Model\
+
+\fs11\fsmilli5999 \cf4 Hidden states (\uc0\u8776 40k bits/state)\
+
+\fs12\fsmilli6013 \uc0\u8594  Information rich\
+
+\fs13\fsmilli6650 \cf6 MHA\
+Projector\
+\cf2 input token\
+input embeddings\
+last hidden state\
+
+\fs10\fsmilli5421 sampling\
+
+\fs13\fsmilli6650 output token\
+\cf5 Raw Actor Model\
+
+\fs10\fsmilli5421 \cf4 [Output]: Answer or Action to solve the task.\
+
+\fs13\fsmilli6650 Latent Space Communication\
+
+\fs10\fsmilli5421 \cf7 Collected last hidden states are\
+
+\fs10\fsmilli5435 used as input embeddings\
+
+\fs10\fsmilli5421 <\cf8 bop\cf7 >\
+<\cf8 eop\cf7 >\
+
+\fs13\fsmilli6650 \cf5 Latent Space Actor Model\
+
+\fs10\fsmilli5421 \cf4 [Output]: Answer or Action to solve the task.\
+
+\fs20\fsmilli10037 \cf2 Figure 1: A comparison of Interlat with language-space communication. In language space, an agent transmits a\
+
+\fs19\fsmilli9893 discrete token sequence 
+\fs19\fsmilli9963 [x
+\fs13\fsmilli6974 i
+\fs19\fsmilli9963 ,x
+\fs13\fsmilli6974 i+1
+\fs19\fsmilli9963 ,...,x
+\fs13\fsmilli6974 i+j+1
+\fs19\fsmilli9963 ] 
+\fs19\fsmilli9893 (e.g., a CoT plan) to another. In Interlat, the model leverages its last\
+
+\fs19\fsmilli9863 hidden states as a representation of its internal \'93thought\'94, processed by a communication adapter, and then transmits\
+
+\fs19\fsmilli9963 them directly to the other agent, enabling communication entirely in latent space with higher expressive capacity.\
+
+\fs11\fsmilli5999 \uc0\u55349 \u56379  =\
+\uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406  
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +1 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +2 
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407 \
+
+\fs11\fsmilli5999 \uc0\u8462 
+\fs8\fsmilli4409 1,1
+\fs11\fsmilli5999 \uc0\u8943  \u8462 
+\fs8\fsmilli4409 1,\uc0\u55349 \u56401 \
+
+\fs11\fsmilli5999 \uc0\u8942  \u8945  \u8942 \
+\uc0\u8462 
+\fs8\fsmilli4409 \uc0\u55349 \u56383 ,1
+\fs11\fsmilli5999 \uc0\u8943  \u8462 
+\fs8\fsmilli4409 \uc0\u55349 \u56383 ,\u55349 \u56401 \
+
+\fs11\fsmilli5999 \uc0\u8462 
+\fs8\fsmilli4409 \uc0\u8467  
+\fs11\fsmilli5999 \uc0\u8712  \u8477 
+\fs8\fsmilli4409 \uc0\u55349 \u56401 \
+
+\fs11\fsmilli5999 \uc0\u55349 \u56421 
+\fs8\fsmilli4409 \uc0\u55349 \u56406 +\u55349 \u56407 +1\
+
+\fs9\fsmilli4843 \uc0\u8462 
+\fs7\fsmilli3542 \uc0\u8467  
+\fs9\fsmilli4843 = \uc0\u8462 
+\fs7\fsmilli3542 \uc0\u8467 ,1
+\fs9\fsmilli4843 , \'85 , \uc0\u8462 
+\fs7\fsmilli3542 \uc0\u8467 ,\u55349 \u56401 \
+
+\fs22\fsmilli11018 \cf3 2025\cf2 ), or cache synchronization (\cf3 Fu et al.\cf2 , \cf3 2025\cf2 ;\
+\cf3 Zou et al.\cf2 , \cf3 2025\cf2 ), while expanding the effective\
+
+\fs21\fsmilli10909 communication bandwidth.\
+
+\fs22\fsmilli11018 where 
+\fs21\fsmilli10909 e(\'b7) 
+\fs22\fsmilli11018 is the token embedding. This infer-\
+
+\fs21\fsmilli10855 ence process is analogous to language space multi-\
+
+\fs22\fsmilli11018 agent systems, except that it directly feeds hid-\
+den states between agents. The latent communi-\
+cations are processed by a trainable light-weight\
+
+\fs21\fsmilli10887 self-attention and a projection layer as a communi-\
+
+\fs21\fsmilli10800 cation adapter for rescaling and interpretation. 
+\fs21\fsmilli10909 For\
+
+\fs23\fsmilli11955 3 Interlat\
+
+\fs22\fsmilli11018 In this section, we formalize how to extract an\
+
+\fs21\fsmilli10893 agent\'92s states as the representation of its \'93thought\'94\
+
+\fs22\fsmilli11018 for inter-agent latent space communication. Let\
+
+\fs21\fsmilli10909 x = (x
+\fs15\fsmilli7970 1
+\fs21\fsmilli10909 ,...,x
+\fs15\fsmilli7970 T
+\fs21\fsmilli10909 ) 
+\fs22\fsmilli11018 denote a sequence consisting\
+of a prompt 
+\fs21\fsmilli10909 x
+\fs15\fsmilli7970 1:m 
+\fs22\fsmilli11018 and a completion sequence 
+\fs21\fsmilli10909 y=\
+(y
+\fs15\fsmilli7970 1
+\fs21\fsmilli10909 ,...,y
+\fs15\fsmilli7970 L
+\fs21\fsmilli10909 ) 
+\fs21\fsmilli10800 such that 
+\fs21\fsmilli10909 y
+\fs15\fsmilli7970 \uc0\u8467  
+\fs21\fsmilli10909 = x
+\fs15\fsmilli7970 m+\uc0\u8467  
+\fs21\fsmilli10800 and 
+\fs21\fsmilli10909 L= T\uc0\u8722 m
+\fs21\fsmilli10800 .\
+
+\fs21\fsmilli10909 For each decoding step \uc0\u8467 = 1,...,L, define:\
+h
+\fs15\fsmilli7970 \uc0\u8467  
+\fs21\fsmilli10909 = Transformer(x
+\fs15\fsmilli7970 \uc0\u8804 m+\u8467 \u8722 1
+\fs21\fsmilli10909 )
+\fs15\fsmilli7970 m+\uc0\u8467 \u8722 1 
+\fs21\fsmilli10909 ,\
+H = [ h
+\fs15\fsmilli7970 1
+\fs21\fsmilli10909 , h
+\fs15\fsmilli7970 2
+\fs21\fsmilli10909 , ..., h
+\fs15\fsmilli7970 L
+\fs21\fsmilli10909 ],\
+
+\fs22\fsmilli11018 where 
+\fs21\fsmilli10909 h
+\fs15\fsmilli7970 \uc0\u8467  
+\fs21\fsmilli10909 \uc0\u8712 R
+\fs15\fsmilli7970 d 
+\fs22\fsmilli11018 is the last-layer hidden state im-\
+mediately before predicting 
+\fs21\fsmilli10909 y
+\fs15\fsmilli7970 \uc0\u8467  
+\fs22\fsmilli11018 (i.e., at position\
+
+\fs21\fsmilli10909 m+\uc0\u8467 \u8722 1 
+\fs21\fsmilli10800 in the full sequence). 
+\fs21\fsmilli10909 H \uc0\u8712 R
+\fs15\fsmilli7970 L\'d7d 
+\fs21\fsmilli10800 collects\
+
+\fs21\fsmilli10909 these last hidden states for the completion region.\
+3.1 Latent Communication\
+
+\fs22\fsmilli11018 Interlat removes natural language constraints by\
+letting agents transmit their thoughts by directly\
+
+\fs21\fsmilli10980 passing the collected last hidden states, which we\
+
+\fs22\fsmilli11018 termed latent communication. As shown in Fig-\
+ure \cf3 1\cf2 , this transmission occurs at the end of an\
+agent\'92s message generation process. Special to-\
+kens, 
+\fs21\fsmilli10909 x
+\fs15\fsmilli7970 i 
+\fs21\fsmilli10909 = <bop> 
+\fs22\fsmilli11018 and 
+\fs21\fsmilli10909 x
+\fs15\fsmilli7970 j
+\fs21\fsmilli10909 = <eop>
+\fs22\fsmilli11018 , are added to\
+
+\fs21\fsmilli10975 mark the beginning and the end of the latent com-\
+
+\fs21\fsmilli10860 munications. Consider an agent 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 i 
+\fs21\fsmilli10860 solving a task\
+
+\fs21\fsmilli10909 T= \{x
+\fs15\fsmilli7970 1
+\fs21\fsmilli10909 ,...,x
+\fs15\fsmilli7970 m
+\fs21\fsmilli10909 \}
+\fs22\fsmilli11018 . Upon receiving a latent com-\
+munication 
+\fs21\fsmilli10909 H= \{h
+\fs15\fsmilli7970 1
+\fs21\fsmilli10909 ,h
+\fs15\fsmilli7970 2
+\fs21\fsmilli10909 ,...,h
+\fs15\fsmilli7970 L
+\fs21\fsmilli10909 \}
+\fs22\fsmilli11018 from another\
+
+\fs21\fsmilli10909 agent, it forms its input embedding as:\
+E = [ e(x
+\fs15\fsmilli7970 1
+\fs21\fsmilli10909 ),...,e(x
+\fs15\fsmilli7970 i
+\fs21\fsmilli10909 ),h
+\fs15\fsmilli7970 1
+\fs21\fsmilli10909 ,h
+\fs15\fsmilli7970 2
+\fs21\fsmilli10909 ,...,h
+\fs15\fsmilli7970 L
+\fs21\fsmilli10909 ,e(x
+\fs15\fsmilli7970 j
+\fs21\fsmilli10909 ) ],\
+brevity, we may refer to latent communication as\
+latents where unambiguous.\
+3.2 Training Procedure\
+
+\fs21\fsmilli10893 In this work, we consider two agents: a reasoning\
+
+\fs21\fsmilli10816 agent as a sender that produces a task-specific plan\
+
+\fs22\fsmilli11018 together with its last-layer hidden states, and an\
+actor agent as a receiver that consumes this com-\
+
+\fs21\fsmilli10849 munication to generate actions to solve tasks. This\
+
+\fs21\fsmilli10805 two-agent setting can serve as a fundamental build-\
+
+\fs21\fsmilli10909 ing block for more complex multi-agent systems.\
+
+\fs22\fsmilli11018 Let 
+\fs21\fsmilli10909 Y
+\fs15\fsmilli7970 t 
+\fs22\fsmilli11018 denote the next token at supervised po-\
+sition 
+\fs21\fsmilli10909 t \uc0\u8712 S
+\fs22\fsmilli11018 , where 
+\fs21\fsmilli10909 S 
+\fs22\fsmilli11018 indexes the actor\'92s output\
+
+\fs21\fsmilli10838 tokens corresponding to the ground-truth response,\
+
+\fs22\fsmilli11018 and 
+\fs21\fsmilli10909 C
+\fs15\fsmilli7970 t 
+\fs22\fsmilli11018 the decoder prefix up to position 
+\fs21\fsmilli10909 t
+\fs22\fsmilli11018 . We\
+encourage the actor to utilize 
+\fs21\fsmilli10909 H 
+\fs22\fsmilli11018 by maximizing\
+a supervised fine-tuning objective regularized by\
+
+\fs21\fsmilli10909 conditional distributional separation:\
+L
+\fs15\fsmilli7970 total 
+\fs21\fsmilli10909 = L
+\fs15\fsmilli7970 task 
+\fs21\fsmilli10909 + \uc0\u955 
+\fs15\fsmilli7970 S 
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 sep 
+\fs21\fsmilli10909 + \uc0\u955 
+\fs15\fsmilli7970 A 
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 align
+\fs21\fsmilli10909 ,\
+
+\fs21\fsmilli10893 where 
+\fs21\fsmilli10909 \uc0\u955 
+\fs15\fsmilli7970 S
+\fs21\fsmilli10909 ,\uc0\u955 
+\fs15\fsmilli7970 A 
+\fs21\fsmilli10909 >0
+\fs21\fsmilli10893 , and 
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 task 
+\fs21\fsmilli10893 is the standard cross-\
+
+\fs21\fsmilli10860 entropy loss that ensures the model produces accu-\
+
+\fs21\fsmilli10909 rate and coherent responses for the given task.\
+
+\fs22\fsmilli11018 Conditional thought separation. We compare\
+
+\fs21\fsmilli10969 the conditional output distributions 
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 \uc0\u952  
+\fs21\fsmilli10969 induced by\
+
+\fs21\fsmilli10800 matched latent communications 
+\fs21\fsmilli10909 H
+\fs21\fsmilli10800 and mismatched\
+
+\fs22\fsmilli11018 latents
+\fs21\fsmilli10909 \'98\
+H 
+\fs22\fsmilli11018 (i.e., latent communications sampled\
+
+\fs21\fsmilli10909 3
+\fs24 \cf0 \page 
+\fs21\fsmilli10882 \cf2 from a different task). Specifically, we minimize a\
+
+\fs21\fsmilli10893 weighted Jensen\'96Shannon divergence (\cf3 Lin\cf2 , \cf3 2002\cf2 ):\
+
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 sep 
+\fs21\fsmilli10909 =\uc0\u8722 \
+1\
+|S|
+\fs15\fsmilli7970 t\uc0\u8712 S\
+
+\fs21\fsmilli10909 JS p
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 (\'b7|C
+\fs15\fsmilli7970 t
+\fs21\fsmilli10909 ,H), p
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 (\'b7|C
+\fs15\fsmilli7970 t
+\fs21\fsmilli10909 ,\
+\'98\
+H).\
+
+\fs21\fsmilli10800 This objective separates matched from mismatched\
+
+\fs21\fsmilli10975 conditional distributions, providing a robust train-\
+
+\fs21\fsmilli10800 ing signal that encourages the actor to attend to and\
+
+\fs21\fsmilli10909 leverage task-relevant latent information.\
+
+\fs21\fsmilli10800 Plan-aligned regulation. While maximizing sep-\
+
+\fs22\fsmilli11018 aration encourages sensitivity to 
+\fs21\fsmilli10909 H
+\fs22\fsmilli11018 , it also intro-\
+
+\fs21\fsmilli10855 duces a failure mode where the model may exploit\
+
+\fs22\fsmilli11018 the objective by shifting probability mass toward\
+
+\fs21\fsmilli10811 idiosyncratic tokens that increase divergence while\
+
+\fs21\fsmilli10800 harming task utility. To mitigate this, we regularize\
+
+\fs22\fsmilli11018 predictions conditioned on 
+\fs21\fsmilli10909 H 
+\fs22\fsmilli11018 using those condi-\
+tioned on the corresponding language-space plan\
+
+\fs21\fsmilli10909 P
+\fs21\fsmilli10904 , generated by the same instruction-tuned model\
+
+\fs22\fsmilli11018 during the autoregressive generation of 
+\fs21\fsmilli10909 H
+\fs22\fsmilli11018 . Let\
+
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 plan
+\fs21\fsmilli10909 (\'b7|C
+\fs15\fsmilli7970 t
+\fs21\fsmilli10909 ,P) 
+\fs21\fsmilli10996 denote the distribution when only\
+
+\fs21\fsmilli10969 the plan is provided. For brevity, we omit explicit\
+
+\fs21\fsmilli10909 conditioning on C
+\fs15\fsmilli7970 t 
+\fs21\fsmilli10909 in the following.\
+\uc0\u946 \
+L
+\fs15\fsmilli7970 align
+\fs21\fsmilli10909 =\
+|S|
+\fs15\fsmilli7970 t\uc0\u8712 S\
+
+\fs21\fsmilli10909 KL p
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 (\'b7|H) \uc0\u8741 p
+\fs15\fsmilli7970 plan
+\fs21\fsmilli10909 (\'b7|P)\
+\uc0\u945 \
++\
+|S|
+\fs15\fsmilli7970 t\uc0\u8712 S\
+
+\fs21\fsmilli10909 1\uc0\u8722 cos z
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 (H), z
+\fs15\fsmilli7970 plan
+\fs21\fsmilli10909 (P),\
+
+\fs22\fsmilli11018 where 
+\fs21\fsmilli10909 z
+\fs15\fsmilli7970 \uc0\u952  
+\fs22\fsmilli11018 and 
+\fs21\fsmilli10909 z
+\fs15\fsmilli7970 plan 
+\fs22\fsmilli11018 denote the corresponding nor-\
+
+\fs21\fsmilli10991 malized logit. All divergences and cosine similar-\
+
+\fs22\fsmilli11018 ities are computed at supervised positions, with\
+
+\fs21\fsmilli10909 probabilities obtained from the softmax of logits.\
+
+\fs21\fsmilli10931 Curriculum Learning. Learning to interpret la-\
+
+\fs22\fsmilli11018 tents from scratch is unstable. We thus adopt a\
+token-to-latent curriculum that stochastically re-\
+places early communication positions with their\
+
+\fs21\fsmilli10844 corresponding plan token embeddings. Concretely,\
+
+\fs21\fsmilli10800 we sample a replacement rate 
+\fs21\fsmilli10909 r\uc0\u8712 \{0,0.1,...,1.0\}\
+and form a mixed communication\
+H
+\fs15\fsmilli7970 (r) 
+\fs21\fsmilli10909 = e
+\fs15\fsmilli7970 1
+\fs21\fsmilli10909 ,...,e
+\fs15\fsmilli7970 \uc0\u8970 r\'b7L\u8971 \
+
+\fs21\fsmilli10909 \uc0\u8853 h
+\fs15\fsmilli7970 \uc0\u8970 r\'b7L\u8971 +1
+\fs21\fsmilli10909 ,...,h
+\fs15\fsmilli7970 L\
+token embeddings\
+latent states\
+
+\fs21\fsmilli10909 .\
+
+\fs22\fsmilli11018 This method enhances training efficiency while\
+
+\fs21\fsmilli10909 achieving strong model performance.\
+
+\fs23\fsmilli11955 4 Information Compression\
+
+\fs22\fsmilli11018 While full-length latents 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 L 
+\fs21\fsmilli10909 \uc0\u8712 R
+\fs15\fsmilli7970 L\'d7d 
+\fs22\fsmilli11018 are highly\
+expressive, their temporal length (often dozens\
+
+\fs13\fsmilli6978 \cf9 [Prompt]\
+
+\fs17\fsmilli8568 \cf10 Reasoning Model\
+
+\fs13\fsmilli6978 \cf11 Full length latents \uc0\u55349 
+\fs10\fsmilli5040 \uc0\u55349 \
+
+\fs13\fsmilli6978 Compressed latents \uc0\u55349 
+\fs10\fsmilli5040 K\
+
+\fs17\fsmilli8568 \cf10 MHA & Projector\
+
+\fs13\fsmilli6978 \cf12 <\cf13 bop\cf12 >\
+
+\fs10\fsmilli5389 \cf11 Parallel inputs for loss computation\
+
+\fs13\fsmilli6978 \cf12 <\cf13 eop\cf12 >\
+
+\fs17\fsmilli8568 \cf10 Actor Model\
+
+\fs15\fsmilli7715 \cf14 You are in the middle of a room... Your task is to\
+put two watch in dresser.\
+
+\fs20\fsmilli10062 \cf2 Figure 2: Training the reasoning model, with frozen-\
+
+\fs19\fsmilli9898 actor supervision, to generate a compressed latents 
+\fs19\fsmilli9963 H
+\fs13\fsmilli6974 K\
+
+\fs13\fsmilli6978 \cf9 [Prompt]\
+
+\fs20\fsmilli10062 \cf2 by feeding back the last hidden state as the next input\
+
+\fs19\fsmilli9963 embedding Ktimes.\
+
+\fs17\fsmilli8568 \cf10 Reasoning Model\
+
+\fs22\fsmilli11018 \cf2 to hundreds of steps) introduces substantial com-\
+munication latency. Unlike natural-language to-\
+
+\fs10\fsmilli5389 \cf10 Full length hidden state\
+Generated hidden state\
+
+\fs21\fsmilli10953 \cf2 kens, whose semantics are discrete and inherently\
+
+\fs22\fsmilli11018 sequential, latent states are continuous and over-\
+parameterized relative to task requirements, sug-\
+
+\fs17\fsmilli8568 \cf10 MHA & Projector\
+
+\fs21\fsmilli10800 \cf2 gesting that much of the temporal structure is redun-\
+
+\fs13\fsmilli6978 \cf12 <\cf13 bop\cf12 >\
+<\cf13 eop\cf12 >\
+
+\fs21\fsmilli10855 \cf2 dant. Our goal is therefore to learn an information-\
+
+\fs21\fsmilli10800 preserving bottleneck that compresses latents while\
+
+\fs17\fsmilli8568 \cf10 Actor Model\
+
+\fs21\fsmilli10909 \cf2 retaining their utility for downstream agents.\
+
+\fs21\fsmilli10915 Compression via Latent-Space Reasoning. To\
+
+\fs22\fsmilli11007 this end, we train a separate reasoning model 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 \uc0\u981 \
+
+\fs21\fsmilli10876 to generate compact latent messages 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 K 
+\fs21\fsmilli10909 \uc0\u8712 R
+\fs15\fsmilli7970 K\'d7d\
+
+\fs21\fsmilli10800 with 
+\fs21\fsmilli10909 K \uc0\u8810 L
+\fs21\fsmilli10800 , while keeping the actor model and its\
+communication adapter frozen. Rather than truncat-\
+
+\fs22\fsmilli11007 ing or subsampling 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 L
+\fs22\fsmilli11007 , 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 \uc0\u981  
+\fs22\fsmilli11007 performs autoregres-\
+
+\fs21\fsmilli10800 sive reasoning entirely in latent space by feeding its\
+
+\fs21\fsmilli10882 last hidden state back as the next input embedding\
+
+\fs21\fsmilli10909 through a lightweight projection:\
+\uc0\u10216 M
+\fs15\fsmilli7970 \uc0\u981 
+\fs21\fsmilli10909 (E
+\fs15\fsmilli7970 i
+\fs21\fsmilli10909 ) \uc0\u8594 h
+\fs15\fsmilli7970 i
+\fs21\fsmilli10909 , E
+\fs15\fsmilli7970 i+1 
+\fs21\fsmilli10909 = E
+\fs15\fsmilli7970 i 
+\fs21\fsmilli10909 \uc0\u8853 Proj(h
+\fs15\fsmilli7970 i
+\fs21\fsmilli10909 )\uc0\u10217 .\
+
+\fs22\fsmilli11018 This design enables an end-to-end differentiable\
+
+\fs21\fsmilli10925 latent generation loop without decoding to tokens,\
+
+\fs22\fsmilli11018 and isolates compression from changes in the ac-\
+
+\fs21\fsmilli10800 tor\'92s behavior. During training, only the parameters\
+
+\fs22\fsmilli11018 of 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 \uc0\u981  
+\fs22\fsmilli11018 are updated, ensuring that compression is\
+
+\fs21\fsmilli10800 learned purely by adapting the latent message itself.\
+
+\fs22\fsmilli11018 Training Objective. We train the compression\
+
+\fs21\fsmilli10909 model using a composite objective:\
+L
+\fs15\fsmilli7970 compress 
+\fs21\fsmilli10909 = \uc0\u955 
+\fs15\fsmilli7970 task
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 task 
+\fs21\fsmilli10909 + \uc0\u955 
+\fs15\fsmilli7970 pref
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 pref 
+\fs21\fsmilli10909 + \uc0\u955 
+\fs15\fsmilli7970 geom
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 geom
+\fs21\fsmilli10909 ,\
+4
+\fs24 \cf0 \page 
+\fs21\fsmilli10953 \cf2 which jointly addresses the main failure modes of\
+
+\fs22\fsmilli11018 aggressive compression. The task loss 
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 task 
+\fs22\fsmilli11018 is a\
+
+\fs21\fsmilli10800 cross-entropy on the frozen actor\'92s predictions con-\
+
+\fs21\fsmilli10909 ditioned on H
+\fs15\fsmilli7970 K
+\fs21\fsmilli10909 , ensuring downstream task utility.\
+
+\fs21\fsmilli10936 Motivated by the non-uniform information den-\
+
+\fs21\fsmilli10822 sity of token-level language communication (\cf3 Shan-\
+
+\fs22\fsmilli11018 non\cf2 , \cf3 1951\cf2 ; \cf3 Zhang et al.\cf2 , \cf3 2024a\cf2 ), we introduce an\
+uncertainty-weighted agreement loss that selec-\
+tively aligns the actor\'92s behavior. Let 
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (A)\
+t 
+\fs22\fsmilli11018 , 
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (D)\
+t 
+\fs22\fsmilli11018 ,\
+
+\fs21\fsmilli10985 and 
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (B)\
+t 
+\fs21\fsmilli10985 denote the actor\'92s output distributions at\
+
+\fs21\fsmilli10800 position 
+\fs21\fsmilli10909 t
+\fs21\fsmilli10800 when conditioned on 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 K
+\fs21\fsmilli10800 , 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 L
+\fs21\fsmilli10800 , and no la-\
+tents, respectively. We define the per-token weights\
+
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 t 
+\fs21\fsmilli10909 \uc0\u8733 max(H(p
+\fs15\fsmilli7970 (B)\
+t 
+\fs21\fsmilli10909 ) \uc0\u8722 H(p
+\fs15\fsmilli7970 (D)\
+t 
+\fs21\fsmilli10909 ), 0) 
+\fs22\fsmilli11018 and compute\
+
+\fs21\fsmilli10909 the preference loss as:\
+L
+\fs15\fsmilli7970 pref
+\fs21\fsmilli10909 =\
+1\
+
+\fs15\fsmilli7970 t\uc0\u8712 S
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 t t\uc0\u8712 S\
+
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 t
+\fs21\fsmilli10909 KL p
+\fs15\fsmilli7970 (D)\
+t 
+\fs21\fsmilli10909 \uc0\u8741 p
+\fs15\fsmilli7970 (A)\
+t
+\fs21\fsmilli10909 .\
+
+\fs21\fsmilli10942 This objective emphasizes positions where latents\
+
+\fs21\fsmilli10953 meaningfully reduce predictive uncertainty, while\
+
+\fs21\fsmilli10985 avoiding over-regularization where latents are un-\
+
+\fs21\fsmilli10909 informative.\
+
+\fs21\fsmilli10947 Finally, to prevent representational drift, we ap-\
+
+\fs22\fsmilli11018 ply a latent geometry alignment loss. Let
+\fs21\fsmilli10909 \'af\
+z
+\fs15\fsmilli7970 (A)\
+
+\fs21\fsmilli10800 and
+\fs21\fsmilli10909 \'af\
+z
+\fs15\fsmilli7970 (D) 
+\fs21\fsmilli10800 denote the step-averaged directions of the\
+
+\fs22\fsmilli11007 actor-side latent features induced by 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 K 
+\fs22\fsmilli11007 and 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 L
+\fs22\fsmilli11007 .\
+
+\fs21\fsmilli10909 We enforce:\
+L
+\fs15\fsmilli7970 geom 
+\fs21\fsmilli10909 = 1\uc0\u8722 cos\
+\'af\
+z
+\fs15\fsmilli7970 (A)\
+
+\fs21\fsmilli10909 ,\'af\
+z
+\fs15\fsmilli7970 (D)\
+
+\fs21\fsmilli10909 ,\
+
+\fs21\fsmilli10876 which preserves the global semantic orientation of\
+
+\fs22\fsmilli11013 the original communication in the compressed la-\
+
+\fs22\fsmilli11018 tent space. Together, these objectives encourage\
+
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 \uc0\u981  
+\fs21\fsmilli10953 to learn an information-preserving bottleneck\
+
+\fs21\fsmilli10800 that discards redundant temporal structure while re-\
+
+\fs21\fsmilli10844 taining task-critical functional and geometric prop-\
+
+\fs21\fsmilli10800 erties. Full derivations are provided in Appendix \cf3 B\cf2 .\
+
+\fs23\fsmilli11955 5 Experiments\
+
+\fs22\fsmilli11018 Implementation Details. We evaluate our ap-\
+
+\fs21\fsmilli10947 proach on Alfworld (\cf3 Shridhar et al.\cf2 , \cf3 2020\cf2 ), which\
+
+\fs22\fsmilli11018 comprises multi-step tasks that require agents\
+to plan and act within a simulated environment,\
+and MATH (\cf3 Hendrycks et al.\cf2 , \cf3 2021\cf2 ). Qwen2.5-\
+
+\fs21\fsmilli10931 7B/0.5B-Base (\cf3 Yang et al.\cf2 , \cf3 2024\cf2 ) and LLaMA3.1-\
+
+\fs21\fsmilli10800 8B-Base (\cf3 Dubey et al.\cf2 , \cf3 2024\cf2 ) are employed as actor\
+
+\fs22\fsmilli11018 agents to isolate benefits from instruction-tuning\
+
+\fs21\fsmilli10838 priors. CoT plans and compression-free latents are\
+
+\fs22\fsmilli11018 generated by their instruction-tuned counterparts.\
+
+\fs21\fsmilli10893 We use base models as reasoning models in the in-\
+
+\fs21\fsmilli10975 formation compression experiments. All reported\
+
+\fs22\fsmilli11018 results are averaged over three independent runs.\
+Alfworld episodes are capped at 20 steps; unfin-\
+
+\fs21\fsmilli10800 ished episodes are failures. Further implementation\
+
+\fs21\fsmilli10909 details are provided in Appendix \cf3 C.1\cf2 .\
+
+\fs22\fsmilli11018 Baselines and variants in Interlat. We study\
+
+\fs21\fsmilli10942 the feasibility of Interlat and compare against two\
+
+\fs22\fsmilli11018 baselines: CoT (full) uses complete CoT plans\
+from instruction-tuned models for full-parameter\
+supervised fine-tuning; No-CoT directly predicts\
+
+\fs21\fsmilli10909 final answers without any plan.\
+
+\fs21\fsmilli10800 We further evaluate variants of our method: Text\
+
+\fs22\fsmilli11018 replaces latent messages with the corresponding\
+
+\fs21\fsmilli10865 CoT plan; No-Comm removes communication en-\
+
+\fs21\fsmilli10800 tirely; CrossTask replaces the current task\'92s latents\
+
+\fs22\fsmilli11018 with one sampled from a different task. Noised\
+adds structured or unstructured perturbations to\
+
+\fs21\fsmilli10909 H
+\fs22\fsmilli11018 ; CovGauss and RandomRot preserve mean\
+or covariance statistics while destroying higher-\
+
+\fs21\fsmilli10925 order structure. Qwen2LLaMA uses latents from\
+
+\fs22\fsmilli11018 Qwen2.5-7B to train LLaMA3.1-8B model. See\
+
+\fs21\fsmilli10909 Appendix \cf3 C.2 \cf2 for detailed implementation setups.\
+5.1 Main Results\
+
+\fs22\fsmilli11018 Table \cf3 1 \cf2 presents a comprehensive comparison of\
+the Interlat framework against baselines. Latent\
+
+\fs21\fsmilli10876 communication improves agents\'92 task-solving per-\
+
+\fs22\fsmilli11018 formance, as evidenced by gains over both fine-\
+
+\fs21\fsmilli10964 tuned single-agent baselines and agents trained to\
+
+\fs22\fsmilli11018 communicate in natural language. We highlight\
+
+\fs21\fsmilli10909 several key observations below.\
+
+\fs22\fsmilli11018 Latent Communication Prompts Exploration.\
+
+\fs21\fsmilli10822 Beyond improvements in success rates, latent com-\
+
+\fs22\fsmilli11018 munication enables agents to execute longer yet\
+more successful trajectories. By leveraging mul-\
+tiple plausible reasoning paths encoded in latents\
+
+\fs21\fsmilli10800 from other agents, the actor naturally exhibits more\
+
+\fs22\fsmilli11018 thorough exploratory behavior, even without ex-\
+plicit exploration training. Importantly, this in-\
+
+\fs21\fsmilli10800 creased trajectory length correlates with higher suc-\
+
+\fs21\fsmilli10991 cess rates rather than degraded efficiency, indicat-\
+
+\fs22\fsmilli11018 ing informed exploration instead of random wan-\
+
+\fs21\fsmilli10936 dering. This behavior suggests a stronger environ-\
+mental understanding enabled by latent communi-\
+
+\fs21\fsmilli10800 cation, where parallel hypotheses are preserved and\
+
+\fs22\fsmilli11018 gradually resolved during action execution. This\
+
+\fs21\fsmilli10909 pattern is analyzed in detail in Appendix \cf3 E\cf2 .\
+
+\fs21\fsmilli10964 Semantics and Learning Dynamics. To assess\
+
+\fs21\fsmilli10800 whether the actor genuinely exploits latent informa-\
+
+\fs22\fsmilli11018 tion rather than superficial patterns, we conduct\
+structured perturbation experiments. Replacing\
+
+\fs21\fsmilli10800 task-matched latents with cross-task latents leads to\
+
+\fs21\fsmilli10909 5
+\fs24 \cf0 \page 
+\fs13\fsmilli6871 \cf2 Method Qwen2.5-7B-Base Qwen2.5-0.5B-Base LLaMA3.1-8B\
+Seen Steps UnSeen Steps Seen Steps UnSeen Steps Seen Steps UnSeen Steps\
+Interlat\
+Ours 70.48 9.41/12.54 65.42 9.86/13.37 61.19 10.55/14.22 57.46 9.38/13.90 70.71 8.02/12.58 70.90 8.21/12.96\
+Text 64.29 8.76/12.77 62.44 9.79/13.63 54.52 9.50/14.28 47.26 9.70/15.13 62.86 7.91/12.94 60.82 8.14/13.21\
+No-Comm 62.14 10.19/13.90 62.19 10.23/13.92 50.48 8.23/14.06 44.03 9.10/15.20 63.57 8.35/12.59 58.40 9.47/13.85\
+Baselines\
+CoT (full) 67.14 8.15/12.04 64.93 9.02/12.87 57.86 8.30/13.23 50.75 8.94/14.39 69.35 7.62/12.32 70.82 7.88/12.47\
+No-CoT 65.71 8.23/12.27 62.69 9.15/13.20 57.14 8.96/13.69 50.25 9.80/14.87 67.18 7.85/12.61 70.34 8.02/12.88\
+Variants\
+CrossTask 61.43 8.42/12.89 61.94 9.51/13.50 53.57 9.40/14.32 47.01 10.06/15.33 65.00 8.05/12.24 63.43 9.86/13.57\
+Noised\
+CovNoise-0.5\'d7 64.29 8.54/12.63 60.95 8.71/13.12 53.33 8.80/14.03 46.77 9.64/15.16 64.29 8.10/12.50 65.68 9.47/12.77\
+CovNoise-1.0\'d7 63.81 8.66/12.76 63.68 8.72/12.82 53.10 8.96/14.14 44.53 9.68/15.40 58.57 7.80/12.80 64.93 9.66/13.28\
+WhiteNoise 61.90 8.65/12.97 61.19 9.32/13.46 57.38 8.00/13.11 57.21 9.18/13.81 61.43 8.01/12.64 64.93 9.52/13.19\
+CovGauss-0\'b5 60.00 8.79/13.27 61.94 9.59/13.55 13.81 11.25/18.79 13.18 12.93/19.07 57.86 8.04/13.08 66.42 9.51/13.03\
+CovGauss-\'b5 65.71 8.58/12.50 64.93 8.63/12.62 44.52 9.21/15.20 34.33 10.19/16.63 60.71 7.69/12.53 64.93 8.85/12.76\
+RandomRot 57.86 8.43/13.31 63.68 9.37/13.23 59.05 8.24/13.06 51.99 9.12/14.34 57.86 7.67/12.86 63.44 9.04/13.25\
+Cross family\
+Qwen2LLaMA 70.95 8.47/12.01 71.39 9.21/13.05 \'96 \'96 \'96 \'96 \'96 \'96 \'96 \'96\
+
+\fs20\fsmilli10047 Table 1: Performance of different methods and variants on seen and unseen tasks of Alfworld under three model\
+
+\fs19\fsmilli9883 backbones. Higher success rates indicate stronger inter-agent collaboration and task-solving ability. \'93Steps\'94 reports\
+
+\fs19\fsmilli9963 average steps on successful tasks and average steps over all tasks. Best in bold, second-best underlined.\
+
+\fs17\fsmilli8966 Method Overall Level-3 Level-4 Level-5\
+Ours 36.88 40.08 27.45 15.80\
+Text 34.35 37.60 26.30 14.20\
+No-Comm 33.27 36.40 26.20 13.10\
+CoT (full) 38.35 45.65 31.19 15.05\
+No-CoT 36.25 40.10 26.80 14.80\
+
+\fs19\fsmilli9863 Table 2: Accuracy (%) on the MATH benchmark. While\
+
+\fs20\fsmilli10062 CoT benefits from linguistic constraints on simpler\
+
+\fs20\fsmilli10052 tasks, Interlat outperforms the strong CoT baseline on\
+
+\fs19\fsmilli9963 the most challenging Level-5 tasks.\
+
+\fs21\fsmilli10887 a substantial performance drop, indicating that the\
+
+\fs22\fsmilli11018 actor relies on task-specific reasoning content en-\
+
+\fs21\fsmilli10865 coded in the latents. Performance degrades further\
+
+\fs21\fsmilli10947 under covariance-matched Gaussian surrogates or\
+
+\fs21\fsmilli10931 random orthogonal rotations, which preserve first-\
+
+\fs21\fsmilli10800 and second-order statistics while destroying higher-\
+
+\fs22\fsmilli11018 order structure, supporting the interpretation that\
+the actor is sensitive to meaningful latent geom-\
+etry rather than low-order moments alone. Addi-\
+
+\fs21\fsmilli10865 tive and white noise perturbations similarly impair\
+
+\fs22\fsmilli11018 performance, further indicating reliance on struc-\
+
+\fs22\fsmilli11007 tured internal information instead of noise-robust\
+
+\fs21\fsmilli10980 heuristics. Experiments involving cross-family la-\
+
+\fs22\fsmilli11007 tent inputs: feeding Qwen-derived latents to train\
+
+\fs21\fsmilli10882 an LLaMA actor, yield even stronger performance\
+
+\fs22\fsmilli11018 gains. Since these model families exhibit distinct\
+latent manifolds, the improvement cannot be at-\
+tributed to superficial architectural compatibility.\
+Instead, it suggests latent-level inter-agent under-\
+
+\fs21\fsmilli10887 standing that transfers across heterogeneous repre-\
+
+\fs21\fsmilli10800 sentations. This observation aligns with findings in\
+
+\fs22\fsmilli11018 language-space agentic systems, where heteroge-\
+
+\fs21\fsmilli10811 neous LLM agents often outperform homogeneous\
+
+\fs20\fsmilli10017 Figure 3: Training dynamics of the separation loss: an\
+
+\fs19\fsmilli9863 initial plateau near 0.69 indicates no separation between\
+
+\fs19\fsmilli9983 matched/mismatched latents, followed by a sharp drop\
+
+\fs19\fsmilli9953 after
+\fs19\fsmilli9963 \uc0\u8764 2.2
+\fs19\fsmilli9953 k steps, marking the model\'92s \'93aha\'94 moment\
+
+\fs19\fsmilli9963 in exploiting task-relevant latent information.\
+
+\fs21\fsmilli10915 ensembles due to complementary inductive biases\
+
+\fs21\fsmilli10964 and reduced error correlations (\cf3 Shinn et al.\cf2 , \cf3 2023\cf2 ;\
+
+\fs21\fsmilli10800 \cf3 Wu et al.\cf2 , \cf3 2024\cf2 ).To corroborate these findings qual-\
+
+\fs22\fsmilli11018 itatively, Figure \cf3 4 \cf2 and Appendix \cf3 I \cf2 visualize clear\
+
+\fs21\fsmilli10893 semantic clustering before and after processing by\
+
+\fs22\fsmilli11018 the communication adapter, confirming effective\
+
+\fs21\fsmilli10909 semantic alignment for downstream use.\
+
+\fs21\fsmilli10985 Training dynamics further reveal how the actor\
+
+\fs21\fsmilli10800 learns to interpret latent communication. As shown\
+in Figure \cf3 3\cf2 , the separation loss remains near 
+\fs21\fsmilli10909 ln 2 
+\fs21\fsmilli10800 for\
+approximately the first 2k steps, indicating no effec-\
+
+\fs21\fsmilli10931 tive distinction between matched and mismatched\
+
+\fs21\fsmilli10942 messages. It then drops sharply, marking an \'93aha\'94\
+
+\fs22\fsmilli11018 moment in which the actor begins to exploit and\
+leverage task-relevant latents, consistent with the\
+
+\fs21\fsmilli10909 intended effect of the separation objective.\
+6
+\fs24 \cf0 \page 
+\fs21\fsmilli10909 \cf2 Ratio Seen Unseen Time\
+Ratio Seen Unseen Time\
+Untrained (An instruction-tuned Model)\
+Untrained (An instruction-tuned Model)\
+Full 70.48
+\fs15\fsmilli7970 \'b11.01 
+\fs21\fsmilli10909 65.42
+\fs15\fsmilli7970 \'b10.87 
+\fs21\fsmilli10909 9.19s\
+90% 68.57
+\fs15\fsmilli7970 \'b11.63 
+\fs21\fsmilli10909 67.16
+\fs15\fsmilli7970 \'b11.97
+\fs21\fsmilli10909 -\
+80% 68.10
+\fs15\fsmilli7970 \'b11.83 
+\fs21\fsmilli10909 61.69
+\fs15\fsmilli7970 \'b11.43
+\fs21\fsmilli10909 -\
+70% 67.14
+\fs15\fsmilli7970 \'b11.82 
+\fs21\fsmilli10909 63.43
+\fs15\fsmilli7970 \'b12.24
+\fs21\fsmilli10909 -\
+60% 66.43
+\fs15\fsmilli7970 \'b11.63 
+\fs21\fsmilli10909 59.20
+\fs15\fsmilli7970 \'b13.69
+\fs21\fsmilli10909 -\
+50% 72.14
+\fs15\fsmilli7970 \'b11.48 
+\fs21\fsmilli10909 61.19
+\fs15\fsmilli7970 \'b12.84
+\fs21\fsmilli10909 -\
+40% 66.90
+\fs15\fsmilli7970 \'b12.31 
+\fs21\fsmilli10909 59.95
+\fs15\fsmilli7970 \'b12.64
+\fs21\fsmilli10909 -\
+30% 65.95
+\fs15\fsmilli7970 \'b12.12 
+\fs21\fsmilli10909 62.19
+\fs15\fsmilli7970 \'b11.58
+\fs21\fsmilli10909 -\
+20% 67.86
+\fs15\fsmilli7970 \'b13.23 
+\fs21\fsmilli10909 61.44
+\fs15\fsmilli7970 \'b11.58
+\fs21\fsmilli10909 -\
+10% 67.86
+\fs15\fsmilli7970 \'b12.12 
+\fs21\fsmilli10909 62.44
+\fs15\fsmilli7970 \'b12.64
+\fs21\fsmilli10909 -\
+5% 64.29
+\fs15\fsmilli7970 \'b11.12 
+\fs21\fsmilli10909 60.95
+\fs15\fsmilli7970 \'b11.35
+\fs21\fsmilli10909 -\
+0% 62.14
+\fs15\fsmilli7970 \'b12.01 
+\fs21\fsmilli10909 62.14
+\fs15\fsmilli7970 \'b12.32
+\fs21\fsmilli10909 -\
+128L 64.55
+\fs15\fsmilli7970 \'b12.26 
+\fs21\fsmilli10909 60.25
+\fs15\fsmilli7970 \'b12.06 
+\fs21\fsmilli10909 3.55s\
+64L 66.23
+\fs15\fsmilli7970 \'b11.95 
+\fs21\fsmilli10909 61.53
+\fs15\fsmilli7970 \'b14.32 
+\fs21\fsmilli10909 1.83s\
+32L 63.57
+\fs15\fsmilli7970 \'b12.01 
+\fs21\fsmilli10909 60.18
+\fs15\fsmilli7970 \'b13.58 
+\fs21\fsmilli10909 1.03s\
+16L 64.29
+\fs15\fsmilli7970 \'b11.34 
+\fs21\fsmilli10909 60.00
+\fs15\fsmilli7970 \'b13.01 
+\fs21\fsmilli10909 0.62s\
+8L 64.00
+\fs15\fsmilli7970 \'b12.18 
+\fs21\fsmilli10909 57.46
+\fs15\fsmilli7970 \'b12.69 
+\fs21\fsmilli10909 0.39s\
+Trained\
+128L 68.10
+\fs15\fsmilli7970 \'b11.93 
+\fs21\fsmilli10909 62.94
+\fs15\fsmilli7970 \'b12.03 
+\fs21\fsmilli10909 2.25s\
+64L 67.14
+\fs15\fsmilli7970 \'b11.56 
+\fs21\fsmilli10909 61.94
+\fs15\fsmilli7970 \'b12.13 
+\fs21\fsmilli10909 1.16s\
+32L 66.90
+\fs15\fsmilli7970 \'b11.46 
+\fs21\fsmilli10909 61.94
+\fs15\fsmilli7970 \'b12.56 
+\fs21\fsmilli10909 0.60s\
+16L 66.43
+\fs15\fsmilli7970 \'b12.05 
+\fs21\fsmilli10909 61.69
+\fs15\fsmilli7970 \'b12.56 
+\fs21\fsmilli10909 0.33s\
+8L 66.43
+\fs15\fsmilli7970 \'b11.22 
+\fs21\fsmilli10909 60.45
+\fs15\fsmilli7970 \'b12.23 
+\fs21\fsmilli10909 0.20s\
+
+\fs20\fsmilli10002 Table 3: Compression results on Alfworld. Left: training-free sweep over retained ratio 
+\fs19\fsmilli9963 R
+\fs20\fsmilli10002 . Right: varying latent\
+
+\fs19\fsmilli9983 length with untrained and trained models. Time denotes end-to-end latency (s) of the message generation process.\
+
+\fs19\fsmilli9963 Best results are bold, second-best are underlined. See Appendix \cf3 G \cf2 for results on LLaMA model.\
+
+\fs22\fsmilli11018 high-complexity tasks, this forced discretization\
+
+\fs21\fsmilli10822 causes a \'93premature collapse\'94 of the reasoning dis-\
+
+\fs22\fsmilli11018 tribution. In contrast, Interlat maintains a super-\
+position of parallel hypotheses in its continuous\
+representations. This capability allows the model\
+to effectively conduct a broader search in latent\
+
+\fs21\fsmilli10909 space that is inaccessible to linear text decoding.\
+
+\fs19\fsmilli9992 Figure 4: PCA visualization of latent communications,\
+
+\fs19\fsmilli9903 showing distinguishable task-specific structure in latent\
+space both before and after the communication adapter.\
+
+\fs21\fsmilli10964 Generalization to Symbolic Reasoning. To as-\
+
+\fs21\fsmilli10882 sess generalization beyond interactive settings, we\
+
+\fs21\fsmilli10936 evaluate Interlat on the MATH benchmark. While\
+
+\fs22\fsmilli11018 prior work on latent-space reasoning (\cf3 Hao et al.\cf2 ,\
+
+\fs21\fsmilli10947 \cf3 2024\cf2 ; \cf3 Shen et al.\cf2 , \cf3 2025\cf2 ; \cf3 Ramesh and Li\cf2 , \cf3 2025\cf2 ) of-\
+
+\fs22\fsmilli11007 ten reports degraded performance relative to CoT\
+
+\fs21\fsmilli10800 supervision, Table \cf3 2 \cf2 reveals an intriguing inversion:\
+
+\fs22\fsmilli11018 although Interlat slightly underperforms on sim-\
+pler problems, it surpasses the CoT baseline on\
+the most challenging Level 5 tasks. We attribute\
+this to the duality of linguistic constraints. For\
+
+\fs21\fsmilli10844 lower-complexity problems, the strict linearization\
+
+\fs21\fsmilli10887 of natural language acts as a beneficial regularizer,\
+
+\fs21\fsmilli10942 efficiently pruning the search space. However, for\
+
+\fs19\fsmilli9913 Figure 5: Task-averaged relative Cross-Entropy (
+\fs19\fsmilli9963 \uc0\u8710 CE
+\fs19\fsmilli9913 )\
+
+\fs19\fsmilli9918 increase vs. communication rate. Learned compression\
+
+\fs19\fsmilli9893 consistently yields lower CE increase than training-free\
+
+\fs20\fsmilli10062 truncation, demonstrating that our method better pre-\
+
+\fs20\fsmilli10057 serves predictive confidence and task-critical informa-\
+
+\fs19\fsmilli9963 tion under reduced communication bandwidth.\
+
+\fs21\fsmilli10909 5.2 Compression Analysis\
+
+\fs21\fsmilli10969 Compression Performance. Theoretically, due\
+
+\fs21\fsmilli10827 to their substantially higher expressive capacity, la-\
+
+\fs21\fsmilli10953 tent communications can encode rich information\
+
+\fs21\fsmilli10800 in far fewer positions. To quantify this compression\
+
+\fs21\fsmilli10909 7
+\fs24 \cf0 \page 
+\fs19\fsmilli9963 \cf2 gray 
+\fs19\fsmilli9863 Figure 6: Analysis of parallelism in latent communication across the first six steps. The 
+\fs19\fsmilli9963 red 
+\fs19\fsmilli9863 denotes latents from the\
+
+\fs19\fsmilli9943 trained model, and the is the untrained model. Trained latents retain stable vertical gaps between successive\
+
+\fs19\fsmilli9953 Top-
+\fs19\fsmilli9963 k
+\fs19\fsmilli9953 bands and exhibit markedly lower 
+\fs19\fsmilli9963 P
+\fs13\fsmilli6974 50
+\fs19\fsmilli9963 (S
+\fs13\fsmilli6974 10
+\fs19\fsmilli9963 )
+\fs19\fsmilli9953 , indicating persistent parallelism, whereas the untrained latents\
+
+\fs19\fsmilli9963 progressively collapse toward Top-1. See Appendix \cf3 H \cf2 for extended results.\
+
+\fs21\fsmilli10909 Actor Seen Unseen\
+Reasoning Seen Unseen\
+Ours Full 70.48
+\fs15\fsmilli7970 \'b11.01 
+\fs21\fsmilli10909 65.42
+\fs15\fsmilli7970 \'b10.87\
+
+\fs21\fsmilli10909 Ours Full 68.10
+\fs15\fsmilli7970 \'b11.93 
+\fs21\fsmilli10909 62.94
+\fs15\fsmilli7970 \'b12.03\
+
+\fs21\fsmilli10909 w/o curri 33.10
+\fs15\fsmilli7970 \'b12.97 
+\fs21\fsmilli10909 20.65
+\fs15\fsmilli7970 \'b12.15\
+
+\fs21\fsmilli10909 w/o L
+\fs15\fsmilli7970 sep 
+\fs21\fsmilli10909 58.81
+\fs15\fsmilli7970 \'b11.41 
+\fs21\fsmilli10909 60.70
+\fs15\fsmilli7970 \'b15.50\
+
+\fs21\fsmilli10909 w/o L
+\fs15\fsmilli7970 align 
+\fs21\fsmilli10909 56.90
+\fs15\fsmilli7970 \'b11.41 
+\fs21\fsmilli10909 53.98
+\fs15\fsmilli7970 \'b13.35\
+
+\fs21\fsmilli10909 w/o adapter 4.05
+\fs15\fsmilli7970 \'b11.70 
+\fs21\fsmilli10909 4.48
+\fs15\fsmilli7970 \'b11.31\
+
+\fs21\fsmilli10909 w/o L
+\fs15\fsmilli7970 task 
+\fs21\fsmilli10909 65.71
+\fs15\fsmilli7970 \'b11.43 
+\fs21\fsmilli10909 63.18
+\fs15\fsmilli7970 \'b13.47\
+
+\fs21\fsmilli10909 w/o L
+\fs15\fsmilli7970 pref 
+\fs21\fsmilli10909 64.76
+\fs15\fsmilli7970 \'b12.97 
+\fs21\fsmilli10909 60.20
+\fs15\fsmilli7970 \'b13.13\
+
+\fs21\fsmilli10909 w/o L
+\fs15\fsmilli7970 geom 
+\fs21\fsmilli10909 64.05
+\fs15\fsmilli7970 \'b13.55 
+\fs21\fsmilli10909 59.45
+\fs15\fsmilli7970 \'b13.01\
+
+\fs19\fsmilli9928 Table 4: Ablation of training components. Left: For the actor, the communication adapter and curriculum learning\
+
+\fs20\fsmilli10062 are foundational; removing the adapter leads to near-zero success rates. Right: For the reasoning model, the\
+geometry alignment loss (
+\fs19\fsmilli9963 L
+\fs13\fsmilli6974 geom
+\fs20\fsmilli10062 ) proves to be the most critical objective for maintaining performance under\
+
+\fs19\fsmilli9963 compression. See Appendix \cf3 E \cf2 for full results and analysis.\
+
+\fs22\fsmilli11018 capacity, we consider two settings. i) Untrained:\
+We directly use Qwen2.5-7B-Instruct to generate\
+
+\fs21\fsmilli10898 full-length latents for actor training, and then trun-\
+
+\fs21\fsmilli10844 cate them to shorter lengths. This setting evaluates\
+
+\fs22\fsmilli11018 the empirical compressibility of raw latents. ii)\
+
+\fs21\fsmilli10904 Trained: We use a compression-trained Qwen2.5-\
+7B-Base reasoning model. Results on the LLaMA\
+
+\fs21\fsmilli10909 model are provided in Appendix \cf3 G\cf2 .\
+
+\fs21\fsmilli10925 As shown in Table \cf3 3\cf2 , naive truncation performs\
+
+\fs21\fsmilli10942 best at moderate compression (50%) but degrades\
+
+\fs22\fsmilli11018 under more aggressive shortening, revealing the\
+
+\fs21\fsmilli10942 limits of untrained compression. In contrast, com-\
+
+\fs22\fsmilli11018 pression training enables consistently higher and\
+
+\fs21\fsmilli10849 more stable success rates across compressed latent\
+
+\fs21\fsmilli10800 ranging from 8 to 128 steps (around 1.8% to 28.8%\
+
+\fs22\fsmilli11018 of the full sequence), indicating that the reason-\
+
+\fs21\fsmilli10800 ing model learns an information-preserving pattern\
+
+\fs21\fsmilli10909 that discards temporal redundancy while retaining\
+
+\fs21\fsmilli10800 task-relevant semantics. Furthermore, compression\
+
+\fs21\fsmilli10893 substantially improves efficiency, reducing end-to-\
+
+\fs21\fsmilli10800 end latency from 9.19 s to 0.39 s with 8-step latents\
+
+\fs21\fsmilli10833 (nearly 
+\fs21\fsmilli10909 24\'d7
+\fs21\fsmilli10833 speed-up), and further to 0.20 s with a\
+
+\fs22\fsmilli11007 lightweight bridge module by largely eliminating\
+
+\fs21\fsmilli10909 decode\'96re-encode overhead.\
+
+\fs22\fsmilli11018 Why compression is effective. To understand\
+
+\fs21\fsmilli10980 why compression preserves performance, we ana-\
+
+\fs21\fsmilli10920 lyze its effect on the actor\'92s predictive uncertainty.\
+
+\fs22\fsmilli11018 We sweep the communication rate 
+\fs21\fsmilli10909 R \uc0\u8712  [0,1]\
+
+\fs22\fsmilli11018 and measure the task-averaged relative change\
+in cross-entropy (CE), 
+\fs21\fsmilli10909 \uc0\u8710 CE%(R) = 100 \'d7\
+
+\fs15\fsmilli7970 CE
+\fs11\fsmilli5978 comp
+\fs15\fsmilli7970 (R)\uc0\u8722 CE
+\fs11\fsmilli5978 full\
+
+\fs15\fsmilli7970 CE
+\fs11\fsmilli5978 full 
+\fs22\fsmilli11018 . As shown in Figure \cf3 5\cf2 , 
+\fs21\fsmilli10909 \uc0\u8710 CE%\
+
+\fs22\fsmilli11018 decreases monotonically with increasing 
+\fs21\fsmilli10909 R 
+\fs22\fsmilli11018 and\
+
+\fs21\fsmilli10953 plateaus between roughly 30% and 75%, aligning\
+
+\fs21\fsmilli10904 with the range of strongest empirical performance.\
+
+\fs21\fsmilli10947 Across all rates, learned compression consistently\
+
+\fs21\fsmilli10855 yields lower CE than training-free truncation, with\
+
+\fs22\fsmilli11018 a maximum gap of approximately 11 percentage\
+
+\fs21\fsmilli10931 points, indicating better preservation of predictive\
+
+\fs21\fsmilli10909 confidence under reduced communication.\
+
+\fs22\fsmilli11018 We further examine how information is pre-\
+served under compression via the actor\'92s output\
+
+\fs21\fsmilli10800 distributions. Following (\cf3 Hao et al.\cf2 , \cf3 2024\cf2 ), broader\
+
+\fs22\fsmilli11018 probability mass is interpreted as indicating that\
+the model maintains more plausible alternatives.\
+Figure \cf3 6 \cf2 analyzes the latent steps of the reason-\
+ing agent by plotting the cumulative probabil-\
+ity mass of the top-
+\fs21\fsmilli10909 6 
+\fs22\fsmilli11018 tokens across communica-\
+
+\fs21\fsmilli10800 tion percentiles, with probabilities normalized over\
+
+\fs22\fsmilli11018 the top-10 tokens for comparability. Latents pro-\
+
+\fs21\fsmilli10909 8
+\fs24 \cf0 \page 
+\fs22\fsmilli11018 \cf2 duced by the trained reasoning agent exhibit sta-\
+ble gaps between successive top-
+\fs21\fsmilli10909 6 
+\fs22\fsmilli11018 curves across\
+
+\fs21\fsmilli10871 steps, whereas untrained compression shows rapid\
+
+\fs21\fsmilli10887 concentration toward top-ranked tokens. We quan-\
+
+\fs22\fsmilli11018 tify this behavior using a head-coverage statistic,\
+
+\fs21\fsmilli10909 P50(S
+\fs15\fsmilli7970 10
+\fs21\fsmilli10909 )
+\fs21\fsmilli10915 , defined as the median cumulative prob-\
+
+\fs21\fsmilli10958 ability mass of the top-10 tokens, which is consis-\
+
+\fs22\fsmilli11018 tently lower for the trained model and indicates\
+
+\fs21\fsmilli10909 broader support over plausible alternatives.\
+
+\fs21\fsmilli10800 Together, these observations suggest that learned\
+
+\fs22\fsmilli11018 compression preserves diverse hypotheses across\
+
+\fs21\fsmilli10996 multiple reasoning steps, avoiding collapse into a\
+
+\fs21\fsmilli10871 single trajectory and thereby retaining richer infor-\
+
+\fs21\fsmilli10909 mation for downstream decision making.\
+5.3 Ablation Studies\
+
+\fs21\fsmilli10947 Table \cf3 4 \cf2 presents a systematic ablation of the train-\
+
+\fs22\fsmilli11018 ing components. For the actor model, removing\
+curriculum learning forces the model to interpret\
+
+\fs21\fsmilli10860 latents from scratch, leading to extremely unstable\
+
+\fs21\fsmilli10985 training dynamics and severely degraded compre-\
+
+\fs21\fsmilli10980 hension (Appendix, Figure \cf3 7\cf2 ). Removing the sep-\
+
+\fs22\fsmilli11018 aration loss induces shortcut behavior; the model\
+
+\fs21\fsmilli10882 learns to ignore the latent communication and rely\
+
+\fs22\fsmilli11018 only on the textual task prompt, causing perfor-\
+
+\fs21\fsmilli10964 mance to regress toward the single agent baseline.\
+
+\fs22\fsmilli11018 Removing the communication adapter causes the\
+
+\fs21\fsmilli10800 largest drop; despite generating fluent and coherent\
+
+\fs22\fsmilli11018 responses, the model fails to complete tasks, un-\
+
+\fs21\fsmilli10800 derscoring the adapter\'92s role in bridging the agents\'92\
+
+\fs21\fsmilli10876 latent spaces and enabling interpretation of latents.\
+
+\fs22\fsmilli11018 For the reasoning model, which is trained to\
+generate compressed latents, we ablated its three\
+
+\fs21\fsmilli10985 core loss functions with compressed target length\
+
+\fs21\fsmilli10909 K = 128
+\fs22\fsmilli11018 . The most critical component is the di-\
+
+\fs21\fsmilli10805 rection alignment loss (
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 geom
+\fs21\fsmilli10805 ). This highlights the\
+
+\fs21\fsmilli10991 importance of maintaining geometric consistency\
+
+\fs22\fsmilli11018 between the compressed latents and the uncom-\
+
+\fs21\fsmilli10800 pressed ones. The agreement loss (
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 pref 
+\fs21\fsmilli10800 ) is also vi-\
+tal, as removing it significantly impairs the model\'92s\
+
+\fs21\fsmilli10980 ability to produce latents that elicit the correct be-\
+
+\fs21\fsmilli10844 havior from the actor. Removing the cross-entropy\
+
+\fs22\fsmilli11018 loss (
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 task
+\fs22\fsmilli11018 ) degrades performance on seen tasks\
+
+\fs21\fsmilli10800 but slightly improves unseen performance, suggest-\
+
+\fs22\fsmilli11018 ing a minor trade-off between in-distribution op-\
+timization and generalization. We leave a deeper\
+
+\fs21\fsmilli10909 investigation into this trade-off to future work.\
+
+\fs23\fsmilli11955 6 Conclusion\
+
+\fs22\fsmilli11018 In this work, we introduced Interlat, a paradigm\
+
+\fs21\fsmilli10876 that enables inter-agent communication entirely in\
+
+\fs21\fsmilli10871 latent space. Across experiments, our results show\
+
+\fs21\fsmilli10855 that directly transmitting and reasoning over latent\
+
+\fs21\fsmilli10800 states improves task performance and achieves sub-\
+
+\fs22\fsmilli11018 stantially higher communication efficiency, even\
+
+\fs21\fsmilli10887 demonstrating compatibility across heterogeneous\
+
+\fs22\fsmilli11018 models. Beyond full-length latent exchange, we\
+show that latent communication can be aggres-\
+
+\fs21\fsmilli10920 sively compressed through latent-space reasoning,\
+
+\fs21\fsmilli10871 forming a compact, task-preserving representation\
+
+\fs22\fsmilli11018 that retains parallel hypotheses while discarding\
+redundant structure. Together, these findings sug-\
+gest that communication need not be bound to\
+
+\fs21\fsmilli10980 language tokens, highlighting latent states as a vi-\
+
+\fs21\fsmilli10909 able, efficient, and generalizable medium for next-\
+generation multi-agent systems.\
+
+\fs23\fsmilli11955 References\
+
+\fs20\fsmilli10062 Sangmin Bae, Adam Fisch, Hrayr Harutyunyan, Zi-\
+wei Ji, Seungyeon Kim, and Tal Schuster. 2024.\
+Relaxed recursive transformers: Effective param-\
+eter sharing with layer-wise lora. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2410.20672.\
+
+\fs20\fsmilli10062 Mert Cemri, Melissa Z Pan, Shuyi Yang, Lakshya A\
+Agrawal, Bhavya Chopra, Rishabh Tiwari, Kurt\
+
+\fs20\fsmilli10012 Keutzer, Aditya Parameswaran, Dan Klein, Kannan\
+
+\fs20\fsmilli10047 Ramchandran, et al. 2025. Why do multi-agent llm\
+
+\fs19\fsmilli9963 systems fail? arXiv preprint arXiv:2503.13657.\
+
+\fs20\fsmilli10062 Yanda Chen, Joe Benton, Ansh Radhakrishnan,\
+Jonathan Uesato, Carson Denison, John Schul-\
+man, Arushi Somani, Peter Hase, Misha Wagner,\
+Fabien Roger, et al. 2025. Reasoning models\
+don\'92t always say what they think. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2505.05410.\
+
+\fs20\fsmilli10062 Jeffrey Cheng and Benjamin Van Durme. 2024. Com-\
+pressed chain of thought: Efficient reasoning\
+through dense representations. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2412.13171.\
+
+\fs20\fsmilli10062 Filippos Christianos, Georgios Papoudakis, Muham-\
+
+\fs19\fsmilli9863 mad A Rahman, and Stefano V Albrecht. 2021. Scal-\
+ing multi-agent reinforcement learning with selective\
+
+\fs20\fsmilli10062 parameter sharing. In International Conference on\
+
+\fs19\fsmilli9963 Machine Learning, pages 1989\'961998. PMLR.\
+
+\fs20\fsmilli10062 Tri Dao. 2023. Flashattention-2: Faster attention with\
+better parallelism and work partitioning. arXiv\
+
+\fs19\fsmilli9963 preprint arXiv:2307.08691.\
+
+\fs20\fsmilli10062 Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey,\
+
+\fs19\fsmilli9903 Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman,\
+
+\fs20\fsmilli10062 Akhil Mathur, Alan Schelten, Amy Yang, Angela\
+
+\fs20\fsmilli10007 Fan, et al. 2024. The llama 3 herd of models. arXiv\
+
+\fs19\fsmilli9963 e-prints, pages arXiv\'962407.\
+
+\fs20\fsmilli10062 Tianyu Fu, Zihan Min, Hanling Zhang, Jichao Yan,\
+Guohao Dai, Wanli Ouyang, and Yu Wang. 2025.\
+Cache-to-cache: Direct semantic communication\
+
+\fs21\fsmilli10909 9
+\fs24 \cf0 \page 
+\fs20\fsmilli10062 \cf2 between large language models. 
+\fs19\fsmilli9963 arXiv:2510.03215.\
+
+\fs20\fsmilli10062 arXiv preprint\
+Yihang Gao, Chuanyang Zheng, Enze Xie, Han Shi,\
+Tianyang Hu, Yu Li, Michael K Ng, Zhenguo Li,\
+
+\fs19\fsmilli9978 and Zhaoqiang Liu. 2024. Algoformer: An efficient\
+
+\fs20\fsmilli10062 transformer framework with algorithmic structures.\
+
+\fs19\fsmilli9963 arXiv preprint arXiv:2402.13572.\
+
+\fs19\fsmilli9888 Jonas Geiping, Sean McLeish, Neel Jain, John Kirchen-\
+
+\fs19\fsmilli9923 bauer, Siddharth Singh, Brian R Bartoldson, Bhavya\
+
+\fs20\fsmilli10062 Kailkhura, Abhinav Bhatele, and Tom Goldstein.\
+2025. Scaling up test-time compute with latent rea-\
+
+\fs20\fsmilli10032 soning: A recurrent depth approach. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2502.05171.\
+
+\fs19\fsmilli9948 Sachin Goyal, Ziwei Ji, Ankit Singh Rawat, Aditya Kr-\
+
+\fs19\fsmilli9958 ishna Menon, Sanjiv Kumar, and Vaishnavh Nagara-\
+
+\fs20\fsmilli10062 jan. 2023. Think before you speak: Training lan-\
+guage models with pause tokens. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2310.02226.\
+
+\fs20\fsmilli10062 Shibo Hao, Sainbayar Sukhbaatar, DiJia Su, Xian Li,\
+
+\fs19\fsmilli9863 Zhiting Hu, Jason Weston, and Yuandong Tian. 2024.\
+
+\fs19\fsmilli9878 Training large language models to reason in a contin-\
+
+\fs19\fsmilli9963 uous latent space. arXiv preprint arXiv:2412.06769.\
+
+\fs20\fsmilli10017 Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul\
+
+\fs19\fsmilli9903 Arora, Steven Basart, Eric Tang, Dawn Song, and Ja-\
+
+\fs19\fsmilli9898 cob Steinhardt. 2021. Measuring mathematical prob-\
+
+\fs20\fsmilli10062 lem solving with the math dataset. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2103.03874.\
+
+\fs20\fsmilli10062 Angeliki Lazaridou, Karl Moritz Hermann, Karl\
+Tuyls, and Stephen Clark. 2018. Emergence of\
+linguistic communication from referential games\
+with symbolic and pixel input. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:1804.03984.\
+
+\fs20\fsmilli10062 Angeliki Lazaridou, Alexander Peysakhovich, and\
+Marco Baroni. 2016. Multi-agent cooperation and\
+
+\fs19\fsmilli9983 the emergence of (natural) language. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:1612.07182.\
+
+\fs20\fsmilli10047 Jianhua Lin. 2002. Divergence measures based on the\
+
+\fs19\fsmilli9908 shannon entropy. IEEE Transactions on Information\
+
+\fs19\fsmilli9963 theory, 37(1):145\'96151.\
+
+\fs19\fsmilli9948 Cixin Liu. 2008. The Dark Forest. Chongqing Publish-\
+
+\fs20\fsmilli10062 ing House, Chongqing, China. English translation\
+
+\fs19\fsmilli9963 published by Tor Books, 2015.\
+
+\fs20\fsmilli10062 Luyang Liu, Jonas Pfeiffer, Jiaxing Wu, Jun Xie, and\
+
+\fs19\fsmilli9933 Arthur Szlam. 2024. Deliberation in latent space via\
+
+\fs20\fsmilli10062 differentiable cache augmentation. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2412.17747.\
+
+\fs20\fsmilli10062 Ilya Loshchilov and Frank Hutter. 2017. pled weight decay regularization. 
+\fs19\fsmilli9963 arXiv:1711.05101.\
+
+\fs20\fsmilli10062 Decou-\
+arXiv preprint\
+Francesco Mezzadri. 2006. How to generate random\
+matrices from the classical compact groups. arXiv\
+
+\fs19\fsmilli9963 preprint math-ph/0609050.\
+
+\fs20\fsmilli10062 Jacob Pfau, William Merrill, and Samuel R Bowman.\
+2024. Let\'92s think dot by dot: Hidden computa-\
+
+\fs19\fsmilli9963 tion in transformer language models. arXiv preprint\
+arXiv:2404.15758.\
+
+\fs19\fsmilli9883 Chau Pham, Boyi Liu, Yingxiang Yang, Zhengyu Chen,\
+
+\fs19\fsmilli9863 Tianyi Liu, Jianbo Yuan, Bryan A Plummer, Zhaoran\
+Wang, and Hongxia Yang. 2023. Let models speak ci-\
+phers: Multiagent debate through embeddings. arXiv\
+
+\fs19\fsmilli9963 preprint arXiv:2310.06272.\
+
+\fs20\fsmilli10062 Samyam Rajbhandari, Jeff Rasley, Olatunji Ruwase,\
+
+\fs19\fsmilli9863 and Yuxiong He. 2020. Zero: Memory optimizations\
+
+\fs20\fsmilli10047 toward training trillion parameter models. In SC20:\
+
+\fs19\fsmilli9863 International Conference for High Performance Com-\
+
+\fs20\fsmilli10032 puting, Networking, Storage and Analysis, pages 1\'96\
+
+\fs19\fsmilli9963 16. IEEE.\
+
+\fs19\fsmilli9863 Vignav Ramesh and Kenneth Li. 2025. Communicating\
+
+\fs20\fsmilli10062 activations between language model agents. arXiv\
+
+\fs19\fsmilli9963 preprint arXiv:2501.14082.\
+
+\fs20\fsmilli10062 Alireza Salemi, Mihir Parmar, Palash Goyal, Yiwen\
+
+\fs19\fsmilli9863 Song, Jinsung Yoon, Hamed Zamani, Hamid Palangi,\
+
+\fs20\fsmilli10062 and Tomas Pfister. 2025. Llm-based multi-agent\
+
+\fs19\fsmilli9938 blackboard system for information discovery in data\
+
+\fs19\fsmilli9963 science. arXiv preprint arXiv:2510.01285.\
+
+\fs20\fsmilli10062 Claude E Shannon. 1951. of printed english. 
+\fs19\fsmilli9963 30(1):50\'9664.\
+
+\fs20\fsmilli10062 Prediction and entropy\
+Bell system technical journal,\
+
+\fs19\fsmilli9978 Zhenyi Shen, Hanqi Yan, Linhai Zhang, Zhanghao Hu,\
+
+\fs20\fsmilli10062 Yali Du, and Yulan He. 2025. Codi: Compress-\
+
+\fs20\fsmilli10042 ing chain-of-thought into continuous space via self-\
+
+\fs19\fsmilli9963 distillation. arXiv preprint arXiv:2502.21074.\
+
+\fs20\fsmilli10062 Noah Shinn, Federico Cassano, Ashwin Gopinath,\
+Karthik Narasimhan, and Shunyu Yao. 2023. Re-\
+
+\fs19\fsmilli9988 flexion: Language agents with verbal reinforcement\
+
+\fs20\fsmilli10062 learning. Advances in Neural Information Process-\
+
+\fs19\fsmilli9963 ing Systems, 36:8634\'968652.\
+
+\fs20\fsmilli10062 Mohit Shridhar, Xingdi Yuan, Marc-Alexandre C\'f4t\'e9,\
+Yonatan Bisk, Adam Trischler, and Matthew\
+
+\fs19\fsmilli9992 Hausknecht. 2020. Alfworld: Aligning text and em-\
+
+\fs20\fsmilli10022 bodied environments for interactive learning. arXiv\
+
+\fs19\fsmilli9963 preprint arXiv:2010.03768.\
+
+\fs20\fsmilli10062 Yifan Song, Da Yin, Xiang Yue, Jie Huang, Sujian\
+Li, and Bill Yuchen Lin. 2024. Trial and error:\
+Exploration-based trajectory optimization for llm\
+
+\fs19\fsmilli9963 agents. arXiv preprint arXiv:2403.02502.\
+
+\fs19\fsmilli9913 Yichen Tang, Weihang Su, Yujia Zhou, Yiqun Liu, Min\
+
+\fs20\fsmilli10062 Zhang, Shaoping Ma, and Qingyao Ai. 2025. Aug-\
+
+\fs19\fsmilli9938 menting multi-agent communication with state delta\
+
+\fs19\fsmilli9963 trajectory. arXiv preprint arXiv:2506.19209.\
+
+\fs20\fsmilli10062 Khanh-Tung Tran, Dung Dao, Minh-Duong Nguyen,\
+Quoc-Viet Pham, Barry O\'92Sullivan, and Hoang D\
+Nguyen. 2025. Multi-agent collaboration mech-\
+anisms: A survey of llms. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2501.06322.\
+
+\fs21\fsmilli10909 10
+\fs24 \cf0 \page 
+\fs20\fsmilli10062 \cf2 Mycal Tucker, Roger Levy, Julie A Shah, and Noga\
+Zaslavsky. 2022. Trading off utility, informative-\
+ness, and complexity in emergent communication.\
+
+\fs20\fsmilli10022 Advances in neural information processing systems,\
+
+\fs19\fsmilli9963 35:22214\'9622228.\
+
+\fs20\fsmilli10062 Mycal Tucker, Huao Li, Siddharth Agrawal, Dana\
+Hughes, Katia Sycara, Michael Lewis, and Julie A\
+Shah. 2021. Emergent discrete communication in\
+semantic spaces. Advances in neural information\
+
+\fs19\fsmilli9963 processing systems, 34:10574\'9610586.\
+
+\fs19\fsmilli9953 Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao\
+
+\fs20\fsmilli10062 Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang,\
+
+\fs19\fsmilli9948 Xu Chen, Yankai Lin, et al. 2024. A survey on large\
+
+\fs19\fsmilli9888 language model based autonomous agents. Frontiers\
+
+\fs19\fsmilli9963 of Computer Science, 18(6):186345.\
+
+\fs20\fsmilli10062 Yingxu Wang, Siwei Liu, Jinyuan Fang, and Zaiqiao\
+Meng. 2025. Evoagentx: An automated frame-\
+
+\fs19\fsmilli9908 work for evolving agentic workflows. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2507.03616.\
+
+\fs20\fsmilli10062 Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten\
+Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou,\
+et al. 2022. Chain-of-thought prompting elicits rea-\
+
+\fs19\fsmilli9863 soning in large language models. Advances in neural\
+
+\fs19\fsmilli9963 information processing systems, 35:24824\'9624837.\
+
+\fs20\fsmilli10062 Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu,\
+Beibin Li, Erkang Zhu, Li Jiang, Xiaoyun Zhang,\
+
+\fs19\fsmilli9943 Shaokun Zhang, Jiale Liu, et al. 2024. Autogen: En-\
+
+\fs19\fsmilli9893 abling next-gen llm applications via multi-agent con-\
+
+\fs19\fsmilli9948 versations. In First Conference on Language Model-\
+
+\fs19\fsmilli9963 ing.\
+
+\fs19\fsmilli9898 An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui,\
+
+\fs19\fsmilli9918 Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu,\
+
+\fs20\fsmilli10052 Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jian-\
+
+\fs20\fsmilli10062 hong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang,\
+Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu,\
+Keqin Bao, Kexin Yang, Le Yu, Mei Li, Mingfeng\
+
+\fs19\fsmilli9933 Xue, Pei Zhang, Qin Zhu, Rui Men, Runji Lin, Tian-\
+
+\fs20\fsmilli10062 hao Li, Tingyu Xia, Xingzhang Ren, Xuancheng\
+Ren, Yang Fan, Yang Su, Yichang Zhang, Yu Wan,\
+Yuqiong Liu, Zeyu Cui, Zhenru Zhang, and Zihan\
+
+\fs19\fsmilli9898 Qiu. 2024. Qwen2.5 technical report. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2412.15115.\
+
+\fs20\fsmilli10062 Fei Yu, Hongbo Zhang, Prayag Tiwari, and Benyou\
+Wang. 2024. Natural language reasoning, a survey.\
+
+\fs19\fsmilli9963 ACM Computing Surveys, 56(12):1\'9639.\
+
+\fs20\fsmilli10062 Guibin Zhang, Yanwei Yue, Zhixun Li, Sukwon Yun,\
+Guancheng Wan, Kun Wang, Dawei Cheng, Jef-\
+frey Xu Yu, and Tianlong Chen. 2024a. Cut the\
+crap: An economical communication pipeline for\
+llm-based multi-agent systems. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2410.02506.\
+
+\fs19\fsmilli9893 Jiayi Zhang, Jinyu Xiang, Zhaoyang Yu, Fengwei Teng,\
+
+\fs20\fsmilli10062 Xionghui Chen, Jiaqi Chen, Mingchen Zhuge, Xin\
+
+\fs19\fsmilli9863 Cheng, Sirui Hong, Jinlin Wang, et al. 2024b. Aflow:\
+
+\fs20\fsmilli10062 Automating agentic workflow generation. arXiv\
+
+\fs19\fsmilli9963 preprint arXiv:2410.10762.\
+
+\fs19\fsmilli9863 Yujia Zheng, Zhuokai Zhao, Zijian Li, Yaqi Xie, Mingze\
+
+\fs20\fsmilli10042 Gao, Lizhu Zhang, and Kun Zhang. 2025. Thought\
+
+\fs20\fsmilli10062 communication in multiagent collaboration. arXiv\
+
+\fs19\fsmilli9963 preprint arXiv:2510.20733.\
+
+\fs20\fsmilli10047 Kunlun Zhu, Hongyi Du, Zhaochen Hong, Xiaocheng\
+
+\fs20\fsmilli10062 Yang, Shuyi Guo, Zhe Wang, Zhenhailong Wang,\
+Cheng Qian, Xiangru Tang, Heng Ji, et al. 2025a.\
+Multiagentbench: Evaluating the collaboration\
+and competition of llm agents. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2503.01935.\
+
+\fs20\fsmilli10062 Rui-Jie Zhu, Tianhao Peng, Tianhao Cheng, Xing-\
+wei Qu, Jinfa Huang, Dawei Zhu, Hao Wang, Kai-\
+wen Xue, Xuanliang Zhang, Yong Shan, et al.\
+
+\fs19\fsmilli9938 2025b. A survey on latent reasoning. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2507.06203.\
+
+\fs20\fsmilli10062 Jiaru Zou, Xiyuan Yang, Ruizhong Qiu, Gaotang Li,\
+Katherine Tieu, Pan Lu, Ke Shen, Hanghang Tong,\
+Yejin Choi, Jingrui He, et al. 2025. Latent col-\
+laboration in multi-agent systems. arXiv preprint\
+
+\fs19\fsmilli9963 arXiv:2511.20639.\
+
+\fs21\fsmilli10909 11
+\fs24 \cf0 \page 
+\fs28\fsmilli14346 \cf2 Table of Contents\
+
+\fs21\fsmilli10909 A LLM usage 13\
+B Compression Loss 13\
+Setup. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . (1) Actor cross-entropy utility. . . . . . . . . . . . . . . . . . . . . . . . . . . . (2) Uncertainty-weighted agreement. . . . . . . . . . . . . . . . . . . . . . . . (3) Latent direction alignment. . . . . . . . . . . . . . . . . . . . . . . . . . . . Overall objective. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13\
+13\
+13\
+14\
+14\
+C Set ups 14\
+C.1 Implementation Details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . C.2 Baselines and settings in Interlat. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14\
+15\
+D Benchmark 16\
+D.1 Alfworld . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . Task Setup and Evaluation Metrics. . . . . . . . . . . . . . . . . . . . . . . . . Why ALFWorld for this work? . . . . . . . . . . . . . . . . . . . . . . . . . . . D.2 MATH . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16\
+17\
+17\
+17\
+E Ablations and Step Analysis Effect of curriculum learning. . . . . . . . . . . . . . . . . . . . . . . . . . . . Step count versus performance. . . . . . . . . . . . . . . . . . . . . . . . . . . 17\
+17\
+18\
+F Training and Inference Pseudocode 18\
+G Compression Result 19\
+H Latent Parallelism Analysis 19\
+I Qualitative Analysis of Latent Communication via PCA 21\
+J Training Template 24\
+12
+\fs24 \cf0 \page 
+\fs21\fsmilli10909 \cf2 Appendix\
+details.\
+
+\fs21\fsmilli10822 The supplementary information accompanying the main paper provides additional data, explanations, and\
+
+\fs23\fsmilli11955 A LLM usage\
+
+\fs22\fsmilli11018 ChatGPT
+\fs15\fsmilli7970 \cf3 1 
+\fs22\fsmilli11018 \cf2 was used purely with the language of the paper during the writing process, including spell-\
+
+\fs22\fsmilli11007 checking and paraphrasing the authors\'92 original content, without suggesting new content. Any content\
+
+\fs21\fsmilli10800 generated with the assistant underwent meticulous manual review and subsequently received final approval\
+
+\fs21\fsmilli10909 from the authors.\
+
+\fs23\fsmilli11955 B Compression Loss\
+
+\fs21\fsmilli10800 Setup. After training an actor 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 \uc0\u952  
+\fs21\fsmilli10800 to consume latent communications, we freeze 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 \uc0\u952  
+\fs21\fsmilli10800 and train a reasoning\
+
+\fs22\fsmilli11018 model 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 \uc0\u981  
+\fs22\fsmilli11018 to produce compact, information-dense latent communications of length 
+\fs21\fsmilli10909 K 
+\fs22\fsmilli11018 that the frozen\
+
+\fs21\fsmilli10904 actor can still exploit. For an input instance with supervised token indices 
+\fs21\fsmilli10909 S
+\fs21\fsmilli10904 (the teacher-forced window\
+
+\fs21\fsmilli10909 after the first user turn), let\
+H
+\fs15\fsmilli7970 gen\
+1:K 
+\fs21\fsmilli10909 = M
+\fs15\fsmilli7970 \uc0\u981 
+\fs21\fsmilli10909 (x) and H
+\fs15\fsmilli7970 full\
+1:L 
+\fs21\fsmilli10909 = M
+\fs15\fsmilli7970 ins
+\fs21\fsmilli10909 (x), (1)\
+
+\fs22\fsmilli11018 denote respectively the generated latent communication from the trainable reasoning model and the\
+full-length latent communication extracted from a fixed instruction-tuned model 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 ins
+\fs22\fsmilli11018 . A lightweight\
+
+\fs21\fsmilli10985 communication adapter 
+\fs21\fsmilli10909 g(\'b7) 
+\fs21\fsmilli10985 (kept frozen) preprocesses the latent communication before concatenation\
+
+\fs21\fsmilli10909 with boundary tokens <bop>/<eop>. For brevity, we use H
+\fs15\fsmilli7970 K 
+\fs21\fsmilli10909 \uc0\u8801 H
+\fs15\fsmilli7970 gen\
+1:K 
+\fs21\fsmilli10909 and H
+\fs15\fsmilli7970 L 
+\fs21\fsmilli10909 \uc0\u8801 H
+\fs15\fsmilli7970 full\
+1:L
+\fs21\fsmilli10909 .\
+
+\fs22\fsmilli11018 We define three actor-scored forward paths through the frozen actor 
+\fs21\fsmilli10909 M
+\fs15\fsmilli7970 \uc0\u952  
+\fs22\fsmilli11018 given a prompt 
+\fs21\fsmilli10909 x
+\fs22\fsmilli11018 : (i) Path\
+
+\fs21\fsmilli10980 A (generated latents): 
+\fs21\fsmilli10909 E
+\fs15\fsmilli7970 (A) 
+\fs21\fsmilli10909 = [ e(x), e(<bop>), g(H
+\fs15\fsmilli7970 K
+\fs21\fsmilli10909 ), e(<eop>) ]
+\fs21\fsmilli10980 ; (ii) Path D (full-length latents):\
+
+\fs21\fsmilli10909 E
+\fs15\fsmilli7970 (D) 
+\fs21\fsmilli10909 = [ e(x), e(<bop>), g(H
+\fs15\fsmilli7970 L
+\fs21\fsmilli10909 ), e(<eop>) ]
+\fs21\fsmilli10969 ; (iii) Path B (no latents): 
+\fs21\fsmilli10909 E
+\fs15\fsmilli7970 (B) 
+\fs21\fsmilli10909 = [ e(x) ]
+\fs21\fsmilli10969 . Let 
+\fs21\fsmilli10909 z
+\fs15\fsmilli7970 (q)\
+t 
+\fs21\fsmilli10969 be the\
+
+\fs21\fsmilli10909 frozen-actor logits at position t\uc0\u8712 Sunder path q\u8712 \{A,D,B\}, and\
+p
+\fs15\fsmilli7970 (q)\
+t 
+\fs21\fsmilli10909 = softmax z
+\fs15\fsmilli7970 (q)\
+t 
+\fs21\fsmilli10909 /T (2)\
+
+\fs21\fsmilli10855 be the corresponding token distributions with temperature 
+\fs21\fsmilli10909 T\uc0\u8805 1 
+\fs21\fsmilli10855 used for distillation. Unless stated other-\
+
+\fs21\fsmilli10909 wise, gradients do not flow into M
+\fs15\fsmilli7970 \uc0\u952  
+\fs21\fsmilli10909 or g(\'b7). The detailed training procedure is provided in Algorithm \cf3 1\cf2 .\
+(1) Actor cross-entropy utility. We require the generated message to be useful for the frozen actor:\
+1\
+L
+\fs15\fsmilli7970 task 
+\fs21\fsmilli10909 =\
+|S|
+\fs15\fsmilli7970 t\uc0\u8712 S\
+
+\fs21\fsmilli10909 \uc0\u8722 log p
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 (y
+\fs15\fsmilli7970 t 
+\fs21\fsmilli10909 |C
+\fs15\fsmilli7970 t
+\fs21\fsmilli10909 ,H
+\fs15\fsmilli7970 K
+\fs21\fsmilli10909 )\
+
+\fs15\fsmilli7970 (computed under Path A).\
+
+\fs21\fsmilli10909 (3)\
+
+\fs22\fsmilli11018 This term enforces that the compressed latents 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 K 
+\fs22\fsmilli11018 still drive correct next-token predictions, directly\
+
+\fs21\fsmilli10964 penalizing information loss due to shortening (
+\fs21\fsmilli10909 K\uc0\u8810 L
+\fs21\fsmilli10964 ). It prevents degenerate \'93over-compression\'94 that\
+
+\fs22\fsmilli11018 would be efficient but useless to the actor. Practically, it anchors training on task utility, encouraging\
+
+\fs21\fsmilli10909 compression gain does not come at the cost of downstream performance.\
+
+\fs22\fsmilli11018 (2) Uncertainty-weighted agreement. We further encourage behavioral agreement between using\
+
+\fs21\fsmilli10800 full-length latent communication (Path D) and generated compressed latent communication (Path A), with\
+
+\fs21\fsmilli10947 per-token weights that reflect how much any latent reduces uncertainty relative to the no-latent baseline\
+
+\fs21\fsmilli10909 (Path B). Let the entropies be\
+H
+\fs15\fsmilli7970 (q)
+\fs21\fsmilli10909 (t) =\uc0\u8722 \
+p
+\fs15\fsmilli7970 (q)\
+t 
+\fs21\fsmilli10909 (v) log p
+\fs15\fsmilli7970 (q)\
+t 
+\fs21\fsmilli10909 (v)\
+,. (4)\
+
+\fs15\fsmilli7970 v\
+q\uc0\u8712 \{A,D,B\}\
+
+\fs11\fsmilli5978 1
+\fs17\fsmilli8966 https://chat.openai.com/\
+
+\fs21\fsmilli10909 13
+\fs24 \cf0 \page 
+\fs22\fsmilli11018 \cf2 Define raw weights 
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 \uc0\u8902 \
+t 
+\fs21\fsmilli10909 = max H
+\fs15\fsmilli7970 (B)
+\fs21\fsmilli10909 (t)\uc0\u8722 H
+\fs15\fsmilli7970 (D)
+\fs21\fsmilli10909 (t), 0 
+\fs22\fsmilli11018 and optionally clip 
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 \uc0\u8902 \
+t 
+\fs22\fsmilli11018 to 
+\fs21\fsmilli10909 [0,\uc0\u964 ] 
+\fs22\fsmilli11018 to suppress\
+
+\fs21\fsmilli10909 outliers. Normalize to unit mean:\
+w
+\fs15\fsmilli7970 \uc0\u8902 \
+t\
+
+\fs21\fsmilli10909 . (5)\
+
+\fs15\fsmilli7970 1\
+|S| u\uc0\u8712 S
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 \uc0\u8902 \
+u 
+\fs21\fsmilli10909 + \uc0\u949 \
+=\
+.\
+w
+\fs15\fsmilli7970 t 
+\fs21\fsmilli10909 =\
+The agreement term is a temperature-scaled KL:\
+L
+\fs15\fsmilli7970 pref
+\fs21\fsmilli10909 =\
+1\
+
+\fs15\fsmilli7970 t\uc0\u8712 S
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 t t\uc0\u8712 S\
+
+\fs21\fsmilli10909 T
+\fs15\fsmilli7970 2\
+t\uc0\u8712 S
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 t t\uc0\u8712 S\
+
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 t 
+\fs21\fsmilli10909 T
+\fs15\fsmilli7970 2 
+\fs21\fsmilli10909 KL p
+\fs15\fsmilli7970 (D)\
+t 
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (A)\
+t\
+
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 t\
+
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (D)\
+t 
+\fs21\fsmilli10909 (v) log p
+\fs15\fsmilli7970 (D)\
+t 
+\fs21\fsmilli10909 (v)\
+
+\fs15\fsmilli7970 v\
+
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (A)\
+t 
+\fs21\fsmilli10909 (v)\
+(6)\
+
+\fs22\fsmilli11002 By matching 
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (A) 
+\fs22\fsmilli11002 to 
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (D) 
+\fs22\fsmilli11002 where full latents actually reduce uncertainty (weights 
+\fs21\fsmilli10909 w
+\fs15\fsmilli7970 t
+\fs22\fsmilli11002 ), this term teaches\
+
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 K 
+\fs22\fsmilli11018 to reproduce the informative behavioral effects of 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 L 
+\fs22\fsmilli11018 while ignoring positions where latents are\
+unhelpful. Unlike reconstruction-based or contrastive objectives, this formulation aligns compressed\
+
+\fs22\fsmilli11013 latents directly through the actor\'92s induced behavior, avoiding assumptions about latent invertibility or\
+
+\fs21\fsmilli10800 instance-level correspondence. This allows compressed communication to focus on functional equivalence\
+
+\fs22\fsmilli11018 rather than representational similarity. This is particularly important for reasoning latents, which are\
+
+\fs22\fsmilli11002 over-parameterized, temporally misaligned under compression, and lack a natural one-to-one mapping\
+
+\fs21\fsmilli10800 across steps. By aligning compressed and full communications through induced behavior, our formulation\
+
+\fs21\fsmilli10904 supports variable-length latent messages, enables abstraction across multiple reasoning steps, and yields\
+
+\fs21\fsmilli10909 more stable and transferable training signals.\
+
+\fs21\fsmilli10953 (3) Latent direction alignment. To stabilize compression, we align the global direction of actor-side\
+
+\fs21\fsmilli10893 latent features induced by generated vs. data latents. Let 
+\fs21\fsmilli10909 Z
+\fs15\fsmilli7970 (q)\
+k 
+\fs21\fsmilli10909 \uc0\u8712 R
+\fs15\fsmilli7970 d
+\fs11\fsmilli5978 z 
+\fs21\fsmilli10893 be the actor-side features (after 
+\fs21\fsmilli10909 g(\'b7)\
+
+\fs22\fsmilli11018 and the actor\'92s input stack) at latent step 
+\fs21\fsmilli10909 k
+\fs22\fsmilli11018 under path 
+\fs21\fsmilli10909 q\uc0\u8712 \{A,D\}
+\fs22\fsmilli11018 . When 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 L 
+\fs22\fsmilli11018 has length 
+\fs21\fsmilli10909 L\uc0\u824 =K
+\fs22\fsmilli11018 , apply\
+
+\fs21\fsmilli10980 a fixed resampling operator 
+\fs21\fsmilli10909 \uc0\u961 
+\fs15\fsmilli7970 K 
+\fs21\fsmilli10980 (e.g., uniform down/up-sampling) and write 
+\fs21\fsmilli10909 Z
+\fs15\fsmilli7970 (D)\
+1:K 
+\fs21\fsmilli10909 = \uc0\u961 
+\fs15\fsmilli7970 K 
+\fs21\fsmilli10909 Z
+\fs15\fsmilli7970 (D)\
+1:L 
+\fs21\fsmilli10980 . Define\
+
+\fs21\fsmilli10909 step-averaged directions\'af\
+z
+\fs15\fsmilli7970 (q) 
+\fs21\fsmilli10909 =\
+
+\fs15\fsmilli7970 1\
+K\
+K\
+k=1 
+\fs21\fsmilli10909 Z
+\fs15\fsmilli7970 (q)\
+k 
+\fs21\fsmilli10909 and the cosine penalty\
+L
+\fs15\fsmilli7970 geom 
+\fs21\fsmilli10909 = 1\uc0\u8722 cos\
+\'af\
+z
+\fs15\fsmilli7970 (A)\
+
+\fs21\fsmilli10909 ,\'af\
+z
+\fs15\fsmilli7970 (D) 
+\fs21\fsmilli10909 = 1\uc0\u8722 \
+\uc0\u10216 \'af\
+z
+\fs15\fsmilli7970 (A)\
+
+\fs21\fsmilli10909 ,\'af\
+z
+\fs15\fsmilli7970 (D)
+\fs21\fsmilli10909 \uc0\u10217 \
+\uc0\u8741 \'af\
+z
+\fs15\fsmilli7970 (A)
+\fs21\fsmilli10909 \uc0\u8741 
+\fs15\fsmilli7970 2 
+\fs21\fsmilli10909 \uc0\u8741 \'af\
+z
+\fs15\fsmilli7970 (D)
+\fs21\fsmilli10909 \uc0\u8741 
+\fs15\fsmilli7970 2\
+
+\fs21\fsmilli10909 (7)\
+
+\fs21\fsmilli10800 This term preserves the geometry of the actor-side representations, preventing the compressed latents from\
+
+\fs21\fsmilli10936 drifting to directions that the actor interprets differently. Empirically, it improves stability and mitigates\
+
+\fs21\fsmilli10909 mode collapse when Kis small by retaining the global semantic orientation of H
+\fs15\fsmilli7970 L
+\fs21\fsmilli10909 .\
+Overall objective. The compression objective for M
+\fs15\fsmilli7970 \uc0\u981  
+\fs21\fsmilli10909 (with M
+\fs15\fsmilli7970 \uc0\u952  
+\fs21\fsmilli10909 frozen) is\
+L
+\fs15\fsmilli7970 compress 
+\fs21\fsmilli10909 = \uc0\u955 
+\fs15\fsmilli7970 task
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 task 
+\fs21\fsmilli10909 + \uc0\u955 
+\fs15\fsmilli7970 pref 
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 pref 
+\fs21\fsmilli10909 + \uc0\u955 
+\fs15\fsmilli7970 geom
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 geom 
+\fs21\fsmilli10909 (8)\
+In practice, all terms are computed over t\uc0\u8712 Swith teacher forcing; gradients propagate only to \u981 .\
+
+\fs23\fsmilli11955 C Set ups\
+
+\fs21\fsmilli10909 C.1 Implementation Details\
+
+\fs22\fsmilli11018 We implement our method based on the Qwen2.5-7B-Base and Qwen2.5-0.5B-Base and LLaMa3-8B-\
+Base models (\cf3 Yang et al.\cf2 , \cf3 2024\cf2 ; \cf3 Dubey et al.\cf2 , \cf3 2024\cf2 ). We deliberately use base models rather than\
+instruction-tuned models as actor models to avoid leaking high-level task priors or implicit planning\
+heuristics into the evaluation. Base models provide unbiased, non-task-specialized language modeling\
+behavior, ensuring that any improvement stems from the latent communication itself rather than from\
+
+\fs21\fsmilli10915 preexisting instruction-tuned reasoning abilities. Using base models, therefore, establishes a stricter and\
+
+\fs21\fsmilli10991 more controlled testbed that isolates the effect of latent messages, allowing us to attribute performance\
+
+\fs21\fsmilli10936 gains to the latent communication mechanism rather than to properties introduced by instruction tuning.\
+
+\fs22\fsmilli11007 All training processes are conducted using mixed-precision training (bfloat16), FlashAttention-2 (\cf3 Dao\cf2 ,\
+
+\fs21\fsmilli10909 14
+\fs24 \cf0 \page 
+\fs21\fsmilli10931 \cf3 2023\cf2 ), gradient checkpointing, and DeepSpeed ZeRO-2 (\cf3 Rajbhandari et al.\cf2 , \cf3 2020\cf2 ) with CPU offload for\
+
+\fs22\fsmilli11002 parameters and optimizer states on 8 NVIDIA A100-80G GPUs with batch-level early stopping on the\
+
+\fs21\fsmilli10800 reasoning model. The global batch size is 16, corresponding to 2 samples per GPU. We adopt the AdamW\
+
+\fs21\fsmilli10947 optimizer (\cf3 Loshchilov and Hutter\cf2 , \cf3 2017\cf2 ) with a learning rate of 1e-5, a 3% warm-up ratio. A validation\
+
+\fs22\fsmilli11018 split of 5% of the dataset is used for model selection. For the pre-process of latent communication,\
+we employ a multi-head attention layer (8 heads), followed by layer normalization and an adaptive\
+
+\fs21\fsmilli10996 projection module as the communication adapter. We treat the task loss with unit weight, and scale the\
+
+\fs22\fsmilli11002 other two terms by dynamic coefficients that are annealed during training, with Qwen2.5-7B-Base and\
+
+\fs22\fsmilli11018 LLaMA3.1-8B-Base: 
+\fs21\fsmilli10909 \uc0\u955 
+\fs15\fsmilli7970 sep 
+\fs21\fsmilli10909 \uc0\u8712 [0.1, 1.0]
+\fs22\fsmilli11018 , 
+\fs21\fsmilli10909 \uc0\u955 
+\fs15\fsmilli7970 align 
+\fs21\fsmilli10909 \uc0\u8712 [0.1, 0.2] 
+\fs22\fsmilli11018 and Qwen2.5-0.5B-Base: 
+\fs21\fsmilli10909 \uc0\u955 
+\fs15\fsmilli7970 sep 
+\fs21\fsmilli10909 \uc0\u8712 [0.1, 0.5]
+\fs22\fsmilli11018 ,\
+
+\fs21\fsmilli10909 \uc0\u955 
+\fs15\fsmilli7970 align 
+\fs21\fsmilli10909 \uc0\u8712 [0.1, 0.2]
+\fs21\fsmilli10838 . For negative sampling in the contrastive objective, we use latent communication from\
+
+\fs21\fsmilli10860 different tasks within the same batch, which provides a more challenging discrimination target compared\
+
+\fs21\fsmilli10909 to random noise.\
+
+\fs22\fsmilli11018 For compression training, the weights of three losses are all 1. We implement our system with a\
+frozen actor agent and a trainable reasoning agent based on Qwen2.5-7B-Base and LLaMA3.1-8B-\
+
+\fs21\fsmilli10975 Base. Unless otherwise stated, the reasoning model (Qwen2.5-7B-Base and LLaMA3.1-8B-Base) uses\
+
+\fs22\fsmilli11018 mixed precision (bfloat16), FlashAttention-2 (\cf3 Dao\cf2 , \cf3 2023\cf2 ) when available, gradient checkpointing, and\
+
+\fs21\fsmilli10849 DeepSpeed ZeRO-2 (\cf3 Rajbhandari et al.\cf2 , \cf3 2020\cf2 ) with CPU offload for parameters and optimizer states. We\
+
+\fs21\fsmilli10811 train on 64
+\fs21\fsmilli10909 \'d7
+\fs21\fsmilli10811 A100-80GB GPUs with per-GPU micro-batch size 
+\fs21\fsmilli10909 2
+\fs21\fsmilli10811 ; DeepSpeed automatically sets gradient\
+
+\fs22\fsmilli11018 accumulation to meet the target effective batch. The optimizer is AdamW with learning rate 
+\fs21\fsmilli10909 5\'d710
+\fs15\fsmilli7970 \uc0\u8722 5\
+
+\fs22\fsmilli11018 ,\
+
+\fs21\fsmilli10909 warmup ratio 3%, and we select models by a 5% validation split with early stopping\
+
+\fs22\fsmilli11018 We choose Alfworld (\cf3 Shridhar et al.\cf2 , \cf3 2020\cf2 ) to test our Interlat, which provides multi-step tasks that\
+
+\fs22\fsmilli11007 require a multi-agent system to plan and act based on the environment. We adopt the official split with\
+
+\fs22\fsmilli11018 3119 training tasks, 140 validation tasks, and 134 test tasks. 
+\fs21\fsmilli10909 Episodes are capped at 20 environment\
+steps
+\fs21\fsmilli10953 ; Success is 1 if the goal state is reached within the budget and 0 otherwise. All models are trained\
+
+\fs22\fsmilli11018 on ALFWorld trajectory data from (\cf3 Song et al.\cf2 , \cf3 2024\cf2 ), which includes task descriptions, step-by-step\
+
+\fs21\fsmilli10855 thoughts, and actions. Latent communications are extracted from a Qwen2.5-7B-instruct, Qwen2.5-0.5B-\
+
+\fs21\fsmilli10985 instruct, and LLaMA3.1-8B-instruct models. 
+\fs21\fsmilli10909 We report the mean result over three independent runs 
+\fs21\fsmilli10985 for\
+
+\fs21\fsmilli10909 each model\'96method/variation pair.\
+C.2 Baselines and settings in Interlat.\
+
+\fs21\fsmilli10969 We consider two external baselines, which do not rely on latent communication at all. All baselines are\
+
+\fs21\fsmilli10898 trained using the same base models (Qwen2.5-7B/0.5B-Base, LLaMA3.1-8B-Base) as Interlat, differing\
+
+\fs21\fsmilli10909 only in whether and how inter-agent communication is provided.\
+1. 
+\fs22\fsmilli11018 CoT (full). We use complete Chain-of-Thought (CoT) traces produced by a related instruction-\
+
+\fs21\fsmilli10805 tuned model (Qwen2.5-7B-Instruct, Qwen2.5-0.5B-Instruct, and LLaMA3.1-8B-Instruct) to perform\
+
+\fs21\fsmilli10904 full-parameter supervised fine-tuning. In inference, the model receives a complete CoT plan before\
+
+\fs21\fsmilli10909 generating answers.\
+
+\fs22\fsmilli11018 Rationale. This baseline serves as a strong upper bound for language-based communication: it\
+
+\fs21\fsmilli10844 evaluates whether latent communication can surpass explicit human-readable planning, and controls\
+
+\fs21\fsmilli10909 for the supervision quality provided by an instruction-tuned teacher.\
+2. 
+\fs21\fsmilli10931 No-CoT. The language model is trained to produce the final answer directly, without receiving any\
+
+\fs21\fsmilli10909 plan from other agents.\
+
+\fs22\fsmilli11018 Rationale. This baseline isolates the contribution of any communication signal. It tests whether\
+
+\fs21\fsmilli10909 inter-agent exchange, latent or linguistic, is necessary for solving multi-step tasks.\
+
+\fs21\fsmilli10871 In addition, we evaluate controlled variants of Interlat to diagnose what information is encoded in the\
+
+\fs21\fsmilli10909 latents.\
+1. 
+\fs21\fsmilli10931 Text. Instead of latent communication, we feed the corresponding CoT plan (in language space) to\
+
+\fs21\fsmilli10909 the actor.\
+15
+\fs24 \cf0 \page 
+\fs21\fsmilli10800 \cf2 Rationale. This variant keeps the interaction protocol unchanged while varying only the communica-\
+tion channel. It enables a direct comparison between language-space and latent-space communication\
+
+\fs21\fsmilli10909 under matched training conditions, disentangling architectural factors from representational ones.\
+2. 
+\fs22\fsmilli11018 No-Comm. We remove any communication from the actor\'92s input. This variant quantifies the\
+
+\fs21\fsmilli10827 intrinsic benefit of communication in our framework and verifies that performance improvements do\
+
+\fs21\fsmilli10909 not arise solely from modifications to the underlying model parameters.\
+3. 
+\fs21\fsmilli10947 CrossTask. We replace the current task\'92s latent communication with one sampled from a different\
+
+\fs21\fsmilli10909 task.\
+
+\fs22\fsmilli11018 Rationale. This variant examines whether the actor is genuinely interpreting task-specific latent\
+content. A substantial degradation indicates reliance on meaningful information encoded in the\
+
+\fs21\fsmilli10909 latents, rather than superficial distributional shortcuts.\
+4. 
+\fs21\fsmilli10800 Noised. We add perturbations to the latent communication 
+\fs21\fsmilli10909 H
+\fs21\fsmilli10800 : (a) CovNoise-0.5
+\fs21\fsmilli10909 \'d7
+\fs21\fsmilli10800 /1.0
+\fs21\fsmilli10909 \'d7
+\fs21\fsmilli10800 : covariance-\
+
+\fs21\fsmilli10909 \'88\
+
+\fs21\fsmilli10827 shaped noise 
+\fs21\fsmilli10909 \uc0\u949 
+\fs15\fsmilli7970 t 
+\fs21\fsmilli10909 \uc0\u8764 N(0,\
+\uc0\u931 ) 
+\fs21\fsmilli10827 with optional strength 
+\fs21\fsmilli10909 \uc0\u955 \u8712 \{0.5,1.0\}
+\fs21\fsmilli10827 , where
+\fs21\fsmilli10909 \'88\
+\uc0\u931  
+\fs21\fsmilli10827 is the sample covariance\
+
+\fs21\fsmilli10909 of the original H; (b) WhiteNoise: a control drawn from N(0,I) with the same length.\
+
+\fs21\fsmilli10800 Rationale. Noise-based perturbations interrogate the robustness and locality of latent-space semantics.\
+
+\fs22\fsmilli11018 Covariance-shaped noise preserves global second-order structure, whereas white noise does not,\
+
+\fs21\fsmilli10953 allowing us to assess whether the actor relies on fine-grained geometric relations within true latent\
+
+\fs21\fsmilli10909 trajectories.\
+\'88\
+5. 
+\fs21\fsmilli10876 CovGauss. We replace the entire 
+\fs21\fsmilli10909 H 
+\fs21\fsmilli10876 with i.i.d. samples 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 t 
+\fs21\fsmilli10909 \uc0\u8764 N(0,\
+\uc0\u931 ) 
+\fs21\fsmilli10876 (0
+\fs21\fsmilli10909 \'b5
+\fs21\fsmilli10876 ) and report a robustness\
+
+\fs21\fsmilli10909 \'88\
+
+\fs21\fsmilli10980 check with 
+\fs21\fsmilli10909 N(\'88 \'b5,\
+\uc0\u931 ) 
+\fs21\fsmilli10980 (
+\fs21\fsmilli10909 \'b5
+\fs21\fsmilli10980 ). These preserve first-second order moments while removing higher-order\
+
+\fs21\fsmilli10909 structure and temporal alignment.\
+
+\fs21\fsmilli10975 Rationale. This variant preserves the mean and covariance of the original latent distribution while\
+
+\fs21\fsmilli10800 discarding all higher-order statistics and temporal correlations. It tests whether latent communication\
+conveys information beyond global moments (first-order and second-order moments), e.g., structured\
+
+\fs21\fsmilli10909 reasoning paths or non-Gaussian manifold geometry.\
+6. 
+\fs22\fsmilli11018 RandomRot. We apply a structure-preserving but information-scrambling transform 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 \uc0\u8242  
+\fs21\fsmilli10909 = \'88 \'b5+\
+\'88\
+(H\uc0\u8722 \
+\'88\
+\'b5)\
+\uc0\u931 
+\fs15\fsmilli7970 \uc0\u8722 1/2 
+\fs21\fsmilli10909 Q\'88\
+\uc0\u931 
+\fs15\fsmilli7970 1/2
+\fs21\fsmilli10909 , where Qis a Haar-random orthogonal matrix (\cf3 Mezzadri\cf2 , \cf3 2006\cf2 ).\
+
+\fs22\fsmilli11018 Rationale. This preserves the mean/covariance exactly while disrupting higher-order structure.\
+
+\fs21\fsmilli10882 Random rotation strictly preserves the first two moments of the latent distribution while scrambling\
+
+\fs21\fsmilli10898 its geometric orientation and higher-order structure. This constitutes a strong diagnostic of whether\
+
+\fs22\fsmilli11018 the actor depends on directional semantics or sequential organization within the latent manifold,\
+
+\fs21\fsmilli10909 rather than mere distributional similarity.\
+7. 
+\fs21\fsmilli10904 Cross-Family. We evaluate Interlat under a cross-model-family setting, where the sender and actor\
+
+\fs21\fsmilli10915 belong to different pretrained model families. Specifically, latent communications are generated by\
+
+\fs21\fsmilli10996 a sender model from one family (In this work, we use Qwen2.5-7B-Instruct) and consumed by an\
+
+\fs22\fsmilli11018 actor model from another family (LLaMA3.1-8B-Base), without sharing parameters or tokenizer\
+
+\fs21\fsmilli10909 vocabularies.\
+
+\fs22\fsmilli11018 Rationale. This setting tests whether latent communication encodes task-relevant information in\
+
+\fs21\fsmilli10991 a model-agnostic manner, rather than exploiting family-specific activation conventions or implicit\
+
+\fs21\fsmilli10909 alignment.\
+
+\fs23\fsmilli11955 D Benchmark\
+
+\fs21\fsmilli10909 D.1 Alfworld\
+
+\fs21\fsmilli10865 Alfworld (\cf3 Shridhar et al.\cf2 , \cf3 2020\cf2 ) is a text-only benchmark that simulates embodied household tasks while\
+
+\fs21\fsmilli10827 keeping interaction purely in natural language. Agents observe textual descriptions of the scene and issue\
+
+\fs21\fsmilli10876 high-level commands from a constrained action set (e.g., go to, open, close, take, put, toggle on/off, heat,\
+
+\fs21\fsmilli10909 16
+\fs24 \cf0 \page 
+\fs21\fsmilli10860 \cf2 cool, examine). Tasks are long-horizon and compositional, requiring perception, planning, and execution\
+
+\fs21\fsmilli10936 over multiple steps under partial observability. The benchmark provides official train/seen/unseen splits\
+
+\fs21\fsmilli10909 and a standard success metric under a fixed step budget (e.g., 20 steps in our setup), enabling systematic\
+and reproducible evaluation of sequential decision-making.\
+
+\fs22\fsmilli11018 Task Setup and Evaluation Metrics. ALFWorld (\cf3 Shridhar et al.\cf2 , \cf3 2020\cf2 ) is a text-based embodied\
+
+\fs21\fsmilli10882 reasoning benchmark where an agent must interact with a simulated household environment to complete\
+
+\fs21\fsmilli10800 goal-oriented tasks (e.g., put the apple in the fridge). Each episode begins with a textual scene description,\
+
+\fs21\fsmilli10855 and in our settings, 
+\fs21\fsmilli10909 we allow up to 20 environment steps for an actor agent to solve a task. 
+\fs21\fsmilli10855 At every step,\
+
+\fs21\fsmilli10816 the agent observes the updated environment state and issues a textual command from a constrained action\
+
+\fs21\fsmilli10887 set (go to, open, close, take, put, toggle on/off, heat, cool, examine, etc. ), receiving a textual observation\
+
+\fs21\fsmilli10838 and reward signal. We train agents on trajectories derived from expert demonstrations (\cf3 Song et al.\cf2 , \cf3 2024\cf2 ),\
+
+\fs21\fsmilli10811 which include the environment descriptions, intermediate thoughts, and executed actions. During training,\
+
+\fs21\fsmilli10800 the actor agent predicts the next action conditioned on task context or received latent communication, while\
+
+\fs21\fsmilli10936 the actor model executes and provides cross-entropy feedback. Alfworld evaluates agents\'92 performance\
+
+\fs22\fsmilli11018 using two primary metrics: 
+\fs21\fsmilli10909 success rate and steps
+\fs22\fsmilli11018 . Success rate measures the proportion of tasks in\
+
+\fs21\fsmilli10871 which the final goal state is reached within the allowed step budget (Success = 1 if goal achieved, else 0).\
+
+\fs21\fsmilli10849 \'93Steps\'94 reports the average number of environment interactions, i.e., action\'96observation cycles\'97taken to\
+
+\fs21\fsmilli10838 successfully complete or terminate a task, not rounds of inter-agent communication. Higher success rates\
+
+\fs21\fsmilli10909 indicate better reasoning and coordination efficiency. We provide training templates in Appendix \cf3 J\cf2 .\
+
+\fs21\fsmilli10800 Why ALFWorld for this work? First, its multi-step, plan-then-act structure closely matches our sender-\
+
+\fs22\fsmilli11018 receiver setup and stresses the precise abilities our method targets: exploration quality, plan following,\
+and coordination. Prior work shows that continuous latent reasoning is especially advantageous\
+on planning-heavy tasks, latent representations preserve multiple candidate reasoning branches and\
+
+\fs21\fsmilli10975 promote breadth-first search (BFS) dynamics (\cf3 Hao et al.\cf2 , \cf3 2024\cf2 ). We ask whether the same or similar\
+
+\fs21\fsmilli10893 advantages hold when agents communicate in latent space; ALFWorld is an ideal testbed because its\
+
+\fs22\fsmilli11007 tasks require long-horizon planning, where agents iteratively observe, form thoughts, and act based on\
+
+\fs21\fsmilli10849 environment feedback. Second, the text-only interface isolates the communication modality itself, letting\
+
+\fs22\fsmilli11018 us cleanly contrast language space vs. latent space communication without confounds from external\
+tools or perception pipelines, thereby allowing us to probe what new properties latent communication\
+
+\fs21\fsmilli10800 introduces for agent behavior. Third, community resources provide consistent task descriptions and action\
+
+\fs22\fsmilli11018 trajectories, allowing us to derive both language baselines (e.g., a CoT plan) and latent representations\
+from the same underlying data, reducing distribution shift. Finally, the moderate episode length and\
+
+\fs21\fsmilli10800 standardized protocol make it feasible to average over multiple independent runs, yielding robust statistics\
+
+\fs21\fsmilli10909 for ablations and compression analyses.\
+D.2 MATH\
+
+\fs21\fsmilli10915 MATH (\cf3 Hendrycks et al.\cf2 , \cf3 2021\cf2 ) is a standard benchmark for evaluating mathematical reasoning in large\
+
+\fs22\fsmilli11018 language models. It consists of high-quality competition-style problems spanning algebra, geometry,\
+
+\fs21\fsmilli10904 number theory, and combinatorics, each annotated with a difficulty level from 1 to 5. Unlike ALFWorld,\
+
+\fs22\fsmilli11018 MATH is a non-interactive, single-turn reasoning task: models must solve each problem without envi-\
+
+\fs21\fsmilli10975 ronmental feedback or intermediate observations, producing a final answer in one pass. We use MATH\
+
+\fs21\fsmilli10925 to assess whether latent communication provides benefits beyond interactive settings, particularly under\
+
+\fs21\fsmilli10909 increasing reasoning complexity as reflected by higher difficulty levels.\
+
+\fs23\fsmilli11955 E Ablations and Step Analysis\
+
+\fs22\fsmilli11018 We present ablation studies for both the actor and reasoning models, reporting the average number of\
+
+\fs21\fsmilli10909 steps for successful trials versus all trials (success/all).\
+
+\fs21\fsmilli10893 Effect of curriculum learning. For the actor model, removing curriculum learning forces the agent to\
+
+\fs21\fsmilli10822 interpret latent communications from scratch. As shown in Figure \cf3 7\cf2 , this leads to highly unstable training\
+
+\fs21\fsmilli10909 17
+\fs24 \cf0 \page 
+\fs21\fsmilli10909 \cf2 Method Seen Steps Unseen Steps\
+Actor model\
+Ours Full 70.48
+\fs15\fsmilli7970 \'b11.01 
+\fs21\fsmilli10909 9.41/12.54 65.42
+\fs15\fsmilli7970 \'b10.87 
+\fs21\fsmilli10909 9.86/13.37\
+w/o curri 33.10
+\fs15\fsmilli7970 \'b12.97 
+\fs21\fsmilli10909 9.07/16.38 20.65
+\fs15\fsmilli7970 \'b12.15 
+\fs21\fsmilli10909 10.47/18.03\
+w/o L
+\fs15\fsmilli7970 sep 
+\fs21\fsmilli10909 58.81
+\fs15\fsmilli7970 \'b11.41 
+\fs21\fsmilli10909 8.07/12.98 60.70
+\fs15\fsmilli7970 \'b15.50 
+\fs21\fsmilli10909 9.64/13.71\
+w/o L
+\fs15\fsmilli7970 align 
+\fs21\fsmilli10909 56.90
+\fs15\fsmilli7970 \'b11.41 
+\fs21\fsmilli10909 8.16/13.26 53.98
+\fs15\fsmilli7970 \'b13.35 
+\fs21\fsmilli10909 9.56/14.36\
+w/o adapter 4.05
+\fs15\fsmilli7970 \'b11.70 
+\fs21\fsmilli10909 9.32/19.57 4.48
+\fs15\fsmilli7970 \'b11.31 
+\fs21\fsmilli10909 10.53/19.58\
+Reasoning model\
+Ours Full 68.10
+\fs15\fsmilli7970 \'b11.93 
+\fs21\fsmilli10909 9.21/12.65 62.94
+\fs15\fsmilli7970 \'b12.03 
+\fs21\fsmilli10909 9.88/13.63\
+w/o L
+\fs15\fsmilli7970 task 
+\fs21\fsmilli10909 65.71
+\fs15\fsmilli7970 \'b11.43 
+\fs21\fsmilli10909 8.86/12.68 63.18
+\fs15\fsmilli7970 \'b13.47 
+\fs21\fsmilli10909 9.68/13.48\
+w/o L
+\fs15\fsmilli7970 pref 
+\fs21\fsmilli10909 64.76
+\fs15\fsmilli7970 \'b12.97 
+\fs21\fsmilli10909 8.92/12.82 60.20
+\fs15\fsmilli7970 \'b13.13 
+\fs21\fsmilli10909 9.68/13.79\
+w/o L
+\fs15\fsmilli7970 geom 
+\fs21\fsmilli10909 64.05
+\fs15\fsmilli7970 \'b13.55 
+\fs21\fsmilli10909 8.71/12.77 59.45
+\fs15\fsmilli7970 \'b13.01 
+\fs21\fsmilli10909 9.88/13.98\
+
+\fs19\fsmilli9963 Table 5: Ablation of training components. \'93Ours Full\'94 uses all components.\
+
+\fs22\fsmilli11018 dynamics and substantially degraded latent comprehension, preventing the model from consistently\
+
+\fs21\fsmilli10909 leveraging the communicated information.\
+
+\fs22\fsmilli11018 Step count versus performance. Table \cf3 5 \cf2 re-\
+veals a nuanced but systematic relationship be-\
+
+\fs21\fsmilli10860 tween step count and task performance. On seen\
+
+\fs21\fsmilli10811 tasks, ablating key components results in a lower\
+
+\fs21\fsmilli10800 overall success rate. Although these ablated mod-\
+
+\fs21\fsmilli10936 els often take fewer steps on the trials they com-\
+
+\fs21\fsmilli10838 plete, their high failure rate indicates an inability\
+
+\fs22\fsmilli11018 to reliably interpret latent communication and\
+
+\fs22\fsmilli11007 solve tasks. In contrast, the full model achieves\
+
+\fs21\fsmilli10893 both higher success rates and longer trajectories,\
+
+\fs22\fsmilli11018 suggesting that additional steps correspond to\
+
+\fs21\fsmilli10909 productive exploration rather than inefficiency.\
+
+\fs21\fsmilli10800 On unseen tasks, several ablations (e.g., remov-\
+
+\fs22\fsmilli11018 ing curriculum learning or the communication\
+adapter) exhibit the opposite pattern: the agent\
+
+\fs21\fsmilli10800 takes more steps while achieving a lower success\
+
+\fs22\fsmilli11018 rate. This demonstrates that longer trajectories\
+
+\fs20\fsmilli10062 Figure 7: Training dynamics of the cross-entropy loss\
+
+\fs20\fsmilli10017 when curriculum learning is removed, illustrating highly\
+
+\fs19\fsmilli9963 unstable optimization behavior.\
+
+\fs21\fsmilli10800 alone do not imply effective exploration. Without\
+
+\fs21\fsmilli10844 these critical components, the policy exhibits un-\
+
+\fs21\fsmilli10822 structured search behavior that fails to form coherent task-solving strategies. Together, these observations\
+
+\fs22\fsmilli11018 underscore the importance of evaluating step count jointly with success rate, and support our central\
+
+\fs21\fsmilli10849 claim that information-rich latent communication enables structured and effective exploration rather than\
+
+\fs21\fsmilli10909 random wandering.\
+
+\fs23\fsmilli11955 F Training and Inference Pseudocode\
+
+\fs21\fsmilli10915 Algorithm \cf3 1 \cf2 gives the detailed two-stage first actor agent, second reasoning agent training procedure for\
+
+\fs21\fsmilli10909 latent communication, and Algorithm \cf3 2 \cf2 summarizes the inference process.\
+18
+\fs24 \cf0 \page 
+\fs18\fsmilli9020 \cf2 (a) Training-free sweep over retained ra-\
+
+\fs17\fsmilli8966 tio R\
+
+\fs17\fsmilli8989 (b) Latent length 
+\fs17\fsmilli8966 L
+\fs17\fsmilli8989 vs. performance (un-\
+
+\fs17\fsmilli8966 trained & trained)\
+
+\fs19\fsmilli9888 Figure 8: Result of compression on seen and unseen tasks. Left: Success rate under training-free compression with\
+
+\fs19\fsmilli9963 different retained ratios R. Right: Performance of untrained and trained models across latent lengths L\
+
+\fs23\fsmilli11955 G Compression Result\
+
+\fs21\fsmilli10898 In this section, we provide more detailed results on compression with average steps as success/all across\
+tasks in Table \cf3 6 \cf2 (LLaMA3.1-8B-Base) and Table \cf3 7 \cf2 (Qwen2.5-7B-Base) and corresponding performance\
+
+\fs22\fsmilli11018 trend in Figure \cf3 8\cf2 . Latency is measured on the same machine and decoding policy (if needed) across\
+
+\fs21\fsmilli10909 rows 
+\fs15\fsmilli7970 \cf3 2\
+
+\fs21\fsmilli10909 \cf2 .\
+
+\fs19\fsmilli9933 Figure 9: Parallelism in latent communication over the first six steps. Red indicates latents from the trained model,\
+
+\fs19\fsmilli9948 and blue indicates latents from the untrained base model. The trained latents preserve stable vertical gaps between\
+
+\fs20\fsmilli10062 successive Top-
+\fs19\fsmilli9963 k
+\fs20\fsmilli10062 bands and achieve a markedly lower 
+\fs19\fsmilli9963 P
+\fs13\fsmilli6974 50
+\fs19\fsmilli9963 (S
+\fs13\fsmilli6974 10
+\fs19\fsmilli9963 )
+\fs20\fsmilli10062 , evidencing persistent parallelism, whereas the\
+
+\fs19\fsmilli9963 untrained base model\'92s latents progressively collapse toward Top-1.\
+
+\fs23\fsmilli11955 H Latent Parallelism Analysis\
+
+\fs21\fsmilli10800 We first compared the latent communications produced by our trained reasoning model with those from an\
+
+\fs21\fsmilli10865 off-the-shelf Qwen2.5-7B-Instruct model in the compression-effectiveness analysis (see the Experiments\
+
+\fs21\fsmilli10887 section). Because our reasoning model is initialized from Qwen2.5-7B-Base, we additionally compare it\
+
+\fs22\fsmilli11018 with this base model, which has not been trained for generating compressed latent communication, in\
+Figure \cf3 9\cf2 . The findings are consistent with the earlier comparison: the trained model maintains stable\
+
+\fs21\fsmilli10969 vertical gaps between successive Top-
+\fs21\fsmilli10909 k
+\fs21\fsmilli10969 curves across steps and exhibits a substantially lower 
+\fs21\fsmilli10909 P
+\fs15\fsmilli7970 50
+\fs21\fsmilli10909 (S
+\fs15\fsmilli7970 10
+\fs21\fsmilli10909 )
+\fs21\fsmilli10969 ,\
+
+\fs21\fsmilli10909 whereas the base model shows a clear convergence toward Top-1.\
+
+\fs11\fsmilli5978 2
+\fs18\fsmilli9056 For the untrained reasoning model, we use the standard 
+\fs17\fsmilli8966 generate 
+\fs18\fsmilli9056 API from Hugging Face 
+\fs17\fsmilli8966 transformers
+\fs18\fsmilli9056 ; see 
+\fs17\fsmilli8966 \cf3 https:\
+//github.com/huggingface/transformers\cf2 .\
+
+\fs21\fsmilli10909 19
+\fs24 \cf0 \page 
+\fs20\fsmilli10032 \cf2 Figure 10: Extended analysis (32 steps). Same construction as Fig. \cf3 6\cf2 , now for steps 
+\fs19\fsmilli9963 1\'9632
+\fs20\fsmilli10032 . Persistent separation\
+
+\fs20\fsmilli10052 among successive Top-
+\fs19\fsmilli9963 k
+\fs20\fsmilli10052 bands and consistently lower 
+\fs19\fsmilli9963 P50(S
+\fs13\fsmilli6974 10
+\fs19\fsmilli9963 ) 
+\fs20\fsmilli10052 values indicate that the trained latents maintain\
+
+\fs19\fsmilli9963 broad, plausible reasoning branches across the entire sequence, despite compression.\
+
+\fs21\fsmilli10909 20
+\fs24 \cf0 \page 
+\fs21\fsmilli10909 \cf2 LLaMA3.1-8B\
+Ratio Seen Steps Unseen Steps Time\
+Untrained\
+Full 70.71
+\fs15\fsmilli7970 \'b11.04 
+\fs21\fsmilli10909 8.02/12.58 70.90
+\fs15\fsmilli7970 \'b11.21 
+\fs21\fsmilli10909 8.21/12.96 10.20s\
+90% 60.09
+\fs15\fsmilli7970 \'b12.94 
+\fs21\fsmilli10909 8.12/12.86 60.45
+\fs15\fsmilli7970 \'b11.58 
+\fs21\fsmilli10909 9.51/13.66 -\
+80% 65.27
+\fs15\fsmilli7970 \'b11.66 
+\fs21\fsmilli10909 8.23/12.32 63.43
+\fs15\fsmilli7970 \'b14.84 
+\fs21\fsmilli10909 9.05/13.06 -\
+70% 60.62
+\fs15\fsmilli7970 \'b12.43 
+\fs21\fsmilli10909 8.14/12.81 61.79
+\fs15\fsmilli7970 \'b12.81 
+\fs21\fsmilli10909 10.13/13.90 -\
+60% 59.82
+\fs15\fsmilli7970 \'b12.55 
+\fs21\fsmilli10909 7.90/12.76 63.44
+\fs15\fsmilli7970 \'b12.79 
+\fs21\fsmilli10909 9.39/13.27 -\
+50% 63.12
+\fs15\fsmilli7970 \'b13.58 
+\fs21\fsmilli10909 8.02/12.44 60.07
+\fs15\fsmilli7970 \'b11.43 
+\fs21\fsmilli10909 9.85/13.90 -\
+40% 65.27
+\fs15\fsmilli7970 \'b11.08 
+\fs21\fsmilli10909 8.06/12.21 59.70
+\fs15\fsmilli7970 \'b11.83 
+\fs21\fsmilli10909 9.67/13.83 -\
+30% 61.25
+\fs15\fsmilli7970 \'b12.61 
+\fs21\fsmilli10909 8.20/12.77 59.51
+\fs15\fsmilli7970 \'b12.39 
+\fs21\fsmilli10909 10.13/14.13 -\
+20% 61.79
+\fs15\fsmilli7970 \'b13.10 
+\fs21\fsmilli10909 8.41/12.84 57.84
+\fs15\fsmilli7970 \'b11.58 
+\fs21\fsmilli10909 9.48/13.92 -\
+10% 64.91
+\fs15\fsmilli7970 \'b11.23 
+\fs21\fsmilli10909 8.60/12.60 60.45
+\fs15\fsmilli7970 \'b14.22 
+\fs21\fsmilli10909 9.48/13.64 -\
+5% 63.68
+\fs15\fsmilli7970 \'b12.57 
+\fs21\fsmilli10909 8.42/12.62 60.95
+\fs15\fsmilli7970 \'b11.35 
+\fs21\fsmilli10909 9.90/13.84 -\
+0% 63.57
+\fs15\fsmilli7970 \'b12.44 
+\fs21\fsmilli10909 8.35/12.59 58.40
+\fs15\fsmilli7970 \'b12.76 
+\fs21\fsmilli10909 9.47/13.85 -\
+128L 61.59
+\fs15\fsmilli7970 \'b12.34 
+\fs21\fsmilli10909 8.24/12.75 62.39
+\fs15\fsmilli7970 \'b12.82 
+\fs21\fsmilli10909 10.01/13.77 4.00s\
+64L 62.54
+\fs15\fsmilli7970 \'b12.90 
+\fs21\fsmilli10909 8.38/12.73 60.52
+\fs15\fsmilli7970 \'b13.08 
+\fs21\fsmilli10909 9.86/13.86 2.10s\
+32L 62.30
+\fs15\fsmilli7970 \'b12.08 
+\fs21\fsmilli10909 8.33/12.73 57.46
+\fs15\fsmilli7970 \'b12.28 
+\fs21\fsmilli10909 9.98/14.24 1.20s\
+16L 63.89
+\fs15\fsmilli7970 \'b12.70 
+\fs21\fsmilli10909 8.53/12.67 59.61
+\fs15\fsmilli7970 \'b13.53 
+\fs21\fsmilli10909 9.50/13.74 0.70s\
+8L 61.79
+\fs15\fsmilli7970 \'b12.44 
+\fs21\fsmilli10909 8.09/12.64 58.77
+\fs15\fsmilli7970 \'b12.76 
+\fs21\fsmilli10909 9.99/14.12 0.45s\
+Trained\
+128L 66.46
+\fs15\fsmilli7970 \'b11.98 
+\fs21\fsmilli10909 8.18/12.54 66.35
+\fs15\fsmilli7970 \'b11.86 
+\fs21\fsmilli10909 8.96/13.12 2.80s\
+64L 66.21
+\fs15\fsmilli7970 \'b11.72 
+\fs21\fsmilli10909 8.12/12.58 65.42
+\fs15\fsmilli7970 \'b11.94 
+\fs21\fsmilli10909 9.02/13.20 1.40s\
+32L 65.45
+\fs15\fsmilli7970 \'b11.63 
+\fs21\fsmilli10909 8.08/12.60 65.01
+\fs15\fsmilli7970 \'b11.88 
+\fs21\fsmilli10909 9.08/13.28 0.72s\
+16L 64.41
+\fs15\fsmilli7970 \'b11.95 
+\fs21\fsmilli10909 8.10/12.64 65.20
+\fs15\fsmilli7970 \'b11.76 
+\fs21\fsmilli10909 9.12/13.34 0.39s\
+8L 64.32
+\fs15\fsmilli7970 \'b11.84 
+\fs21\fsmilli10909 8.14/12.66 64.89
+\fs15\fsmilli7970 \'b11.69 
+\fs21\fsmilli10909 9.18/13.40 0.24s\
+
+\fs20\fsmilli10062 Table 6: Complete compression results with seen/unseen accuracy, steps, and latency across tasks on LLaMA\
+
+\fs19\fsmilli9963 models.\
+
+\fs21\fsmilli10887 We further extend the parallelism analysis to a deeper horizon of 32 steps. As shown in Figure \cf3 10\cf2 , the\
+
+\fs21\fsmilli10865 trained model exhibits stable vertical gaps between successive Top-
+\fs21\fsmilli10909 k
+\fs21\fsmilli10865 curves throughout these steps. This\
+
+\fs21\fsmilli10827 extended analysis further verifies that the trained latent representations preserve a broader set of plausible\
+
+\fs21\fsmilli10838 reasoning paths by sustaining a more balanced probability distribution rather than prematurely collapsing\
+
+\fs21\fsmilli10909 to a Top-1 hypothesis.\
+
+\fs23\fsmilli11955 I Qualitative Analysis of Latent Communication via PCA\
+
+\fs21\fsmilli10876 To qualitatively examine the semantic structure encoded in latent communications, we perform Principal\
+
+\fs21\fsmilli10816 Component Analysis (PCA) on 3,119 samples from the ALFWorld training set. Each sample corresponds\
+
+\fs21\fsmilli10985 to the mean-pooled last-layer hidden state generated by the reasoning agent for a specific task instance.\
+
+\fs21\fsmilli10800 Tasks are grouped according to the official ALFWorld task templates, which define six core reasoning pat-\
+terns: 
+\fs21\fsmilli10909 pick_and_place
+\fs21\fsmilli10800 , 
+\fs21\fsmilli10909 pick_clean_then_place
+\fs21\fsmilli10800 , 
+\fs21\fsmilli10909 pick_heat_then_place
+\fs21\fsmilli10800 , 
+\fs21\fsmilli10909 pick_cool_then_place
+\fs21\fsmilli10800 ,\
+
+\fs21\fsmilli10909 look_in_recep
+\fs22\fsmilli11018 , and 
+\fs21\fsmilli10909 look_at_obj
+\fs22\fsmilli11018 . Figure \cf3 11 \cf2 visualizes the projection of latent communications onto\
+
+\fs21\fsmilli10909 the first two principal components, which capture the dominant axes of variance across task instances.\
+
+\fs22\fsmilli11018 The resulting PCA visualization reveals clear task-dependent organization in the latent space.\
+Action-centric templates such as 
+\fs21\fsmilli10909 pick_and_place 
+\fs22\fsmilli11018 form a dense central cluster, while templates in-\
+volving additional procedural constraints\'97such as thermal manipulation in 
+\fs21\fsmilli10909 pick_heat_then_place\
+
+\fs22\fsmilli11018 and 
+\fs21\fsmilli10909 pick_cool_then_place
+\fs22\fsmilli11018 \'97occupy adjacent yet separable regions. Perception-oriented tasks\
+
+\fs21\fsmilli10800 (
+\fs21\fsmilli10909 look_in_recep 
+\fs21\fsmilli10800 and 
+\fs21\fsmilli10909 look_at_obj
+\fs21\fsmilli10800 ), although less frequent, also exhibit localized concentrations distinct\
+
+\fs21\fsmilli10909 21
+\fs24 \cf0 \page 
+\fs19\fsmilli9968 \cf2 Figure 11: PCA visualization of latent communications grouped by ALFWorld task templates (
+\fs19\fsmilli9963 N = 3,119
+\fs19\fsmilli9968 ). Each\
+
+\fs19\fsmilli9863 point corresponds to the mean-pooled last-layer hidden state of the reasoning agent\'92s plan for a specific task instance.\
+
+\fs20\fsmilli10062 Colors indicate six core task templates: 
+\fs19\fsmilli9963 pick_and_place
+\fs20\fsmilli10062 , 
+\fs19\fsmilli9963 pick_clean_then_place
+\fs20\fsmilli10062 , 
+\fs19\fsmilli9963 pick_heat_then_place
+\fs20\fsmilli10062 ,\
+
+\fs19\fsmilli9963 pick_cool_then_place
+\fs20\fsmilli10062 , 
+\fs19\fsmilli9963 look_in_recep
+\fs20\fsmilli10062 , and 
+\fs19\fsmilli9963 look_at_obj
+\fs20\fsmilli10062 . The emergence of distinct clusters suggests that\
+
+\fs20\fsmilli10012 Interlat\'92s latent communication captures task-specific semantic structure, enabling the actor agent to differentiate\
+
+\fs19\fsmilli9963 diverse reasoning paradigms without relying on natural language.\
+
+\fs21\fsmilli10909 22
+\fs24 \cf0 \page 
+\fs20\fsmilli10062 \cf2 Figure 12: Joint PCA visualization of latent communications grouped by ALFWorld task templates. Each point\
+represents the mean-pooled last-layer hidden state of the reasoning agent for a single task instance (
+\fs19\fsmilli9963 N = 3,119
+\fs20\fsmilli10062 ).\
+Colors indicate different task templates. Solid points correspond to latent representations after applying the\
+
+\fs20\fsmilli10017 communication adapter, while hollow points denote the original latents before transformation. Arrows depict the\
+
+\fs19\fsmilli9958 centroid shift for each template from before to after. Although the centroid shifts are moderate in magnitude, their\
+
+\fs20\fsmilli10062 directions are consistently template-dependent, indicating structured semantic reorganization rather than global\
+
+\fs19\fsmilli9963 rescaling of the latent space.\
+
+\fs21\fsmilli10909 23
+\fs24 \cf0 \page 
+\fs21\fsmilli10909 \cf2 Qwen2.5-7B\
+Ratio Seen Steps Unseen Steps Time\
+Untrained\
+Full 70.48
+\fs15\fsmilli7970 \'b11.01 
+\fs21\fsmilli10909 9.41/12.54 65.42
+\fs15\fsmilli7970 \'b10.87 
+\fs21\fsmilli10909 9.86/13.37 9.19s\
+90% 68.57
+\fs15\fsmilli7970 \'b11.63 
+\fs21\fsmilli10909 8.77/12.30 67.16
+\fs15\fsmilli7970 \'b11.97 
+\fs21\fsmilli10909 9.27/12.79 -\
+80% 68.10
+\fs15\fsmilli7970 \'b11.83 
+\fs21\fsmilli10909 8.56/12.21 61.69
+\fs15\fsmilli7970 \'b11.43 
+\fs21\fsmilli10909 9.10/13.28 -\
+70% 67.14
+\fs15\fsmilli7970 \'b11.82 
+\fs21\fsmilli10909 8.68/12.40 63.43
+\fs15\fsmilli7970 \'b12.24 
+\fs21\fsmilli10909 9.42/13.29 -\
+60% 66.43
+\fs15\fsmilli7970 \'b11.63 
+\fs21\fsmilli10909 8.52/12.37 59.20
+\fs15\fsmilli7970 \'b13.69 
+\fs21\fsmilli10909 9.90/14.02 -\
+50% 72.14
+\fs15\fsmilli7970 \'b11.48 
+\fs21\fsmilli10909 9.03/12.09 61.19
+\fs15\fsmilli7970 \'b12.84 
+\fs21\fsmilli10909 9.37/13.50 -\
+40% 66.90
+\fs15\fsmilli7970 \'b12.31 
+\fs21\fsmilli10909 8.88/12.56 59.95
+\fs15\fsmilli7970 \'b12.64 
+\fs21\fsmilli10909 9.52/13.72 -\
+30% 65.95
+\fs15\fsmilli7970 \'b12.12 
+\fs21\fsmilli10909 8.80/12.61 62.19
+\fs15\fsmilli7970 \'b11.58 
+\fs21\fsmilli10909 10.11/13.85 -\
+20% 67.86
+\fs15\fsmilli7970 \'b13.23 
+\fs21\fsmilli10909 8.97/12.52 61.44
+\fs15\fsmilli7970 \'b11.58 
+\fs21\fsmilli10909 9.98/13.84 -\
+10% 67.86
+\fs15\fsmilli7970 \'b12.12 
+\fs21\fsmilli10909 8.76/12.37 62.44
+\fs15\fsmilli7970 \'b12.64 
+\fs21\fsmilli10909 9.72/13.58 -\
+5% 64.52
+\fs15\fsmilli7970 \'b11.12 
+\fs21\fsmilli10909 9.19/13.02 60.95
+\fs15\fsmilli7970 \'b11.35 
+\fs21\fsmilli10909 9.90/13.84 -\
+0% 62.14
+\fs15\fsmilli7970 \'b12.01 
+\fs21\fsmilli10909 10.19/13.90 62.19
+\fs15\fsmilli7970 \'b12.32 
+\fs21\fsmilli10909 10.23/13.92 -\
+128L 64.52
+\fs15\fsmilli7970 \'b12.26 
+\fs21\fsmilli10909 8.68/12.70 60.20
+\fs15\fsmilli7970 \'b12.06 
+\fs21\fsmilli10909 9.69/13.79 3.55s\
+64L 66.19
+\fs15\fsmilli7970 \'b11.95 
+\fs21\fsmilli10909 8.76/12.56 61.44
+\fs15\fsmilli7970 \'b14.32 
+\fs21\fsmilli10909 9.85/13.76 1.83s\
+32L 63.57
+\fs15\fsmilli7970 \'b12.01 
+\fs21\fsmilli10909 8.66/12.79 60.20
+\fs15\fsmilli7970 \'b13.58 
+\fs21\fsmilli10909 9.87/13.90 1.03s\
+16L 64.29
+\fs15\fsmilli7970 \'b11.34 
+\fs21\fsmilli10909 8.64/12.70 59.95
+\fs15\fsmilli7970 \'b13.01 
+\fs21\fsmilli10909 10.07/14.05 0.62s\
+8L 64.05
+\fs15\fsmilli7970 \'b12.18 
+\fs21\fsmilli10909 8.80/12.83 57.46
+\fs15\fsmilli7970 \'b12.69 
+\fs21\fsmilli10909 10.29/14.42 0.39s\
+Trained\
+128L 68.10
+\fs15\fsmilli7970 \'b11.93 
+\fs21\fsmilli10909 9.21/12.65 62.94
+\fs15\fsmilli7970 \'b12.03 
+\fs21\fsmilli10909 9.88/13.63 2.25s\
+64L 67.14
+\fs15\fsmilli7970 \'b11.56 
+\fs21\fsmilli10909 9.15/12.72 61.94
+\fs15\fsmilli7970 \'b12.13 
+\fs21\fsmilli10909 9.92/13.76 1.16s\
+32L 66.90
+\fs15\fsmilli7970 \'b11.46 
+\fs21\fsmilli10909 9.02/12.65 61.94
+\fs15\fsmilli7970 \'b12.56 
+\fs21\fsmilli10909 9.96/13.78 0.60s\
+16L 66.43
+\fs15\fsmilli7970 \'b12.05 
+\fs21\fsmilli10909 9.08/12.75 61.69
+\fs15\fsmilli7970 \'b12.56 
+\fs21\fsmilli10909 9.98/13.82 0.33s\
+8L 66.43
+\fs15\fsmilli7970 \'b11.22 
+\fs21\fsmilli10909 9.11/12.77 60.45
+\fs15\fsmilli7970 \'b12.23 
+\fs21\fsmilli10909 9.90/13.89 0.20s\
+
+\fs19\fsmilli9878 Table 7: Complete compression results with seen/unseen accuracy, steps, and latency across tasks on Qwen models.\
+
+\fs22\fsmilli11018 from execution-heavy templates. As PCA preserves global variance structure rather than emphasizing\
+
+\fs21\fsmilli10991 local neighborhoods, this separation indicates that task-specific semantics are encoded in the dominant\
+
+\fs21\fsmilli10985 latent dimensions, rather than arising from projection artifacts. Moreover, intra-cluster dispersion (e.g.,\
+
+\fs22\fsmilli11018 within 
+\fs21\fsmilli10909 pick_and_place
+\fs22\fsmilli11018 ) suggests that latent representations retain fine-grained variations across task\
+
+\fs21\fsmilli10909 instances, rather than collapsing to a single prototype per template.\
+
+\fs21\fsmilli10969 Beyond static clustering, we further analyze how these task-level structures are affected by the latent\
+
+\fs21\fsmilli10844 communication adapter. As shown in Figure \cf3 12 \cf2 and quantified in Table \cf3 8\cf2 , different task templates exhibit\
+
+\fs22\fsmilli11018 consistent but template-dependent centroid shifts before and after transformation. While the absolute\
+
+\fs21\fsmilli10876 magnitudes of these shifts are moderate relative to within-template dispersion, their directions are highly\
+
+\fs21\fsmilli10898 structured, indicating selective reorganization rather than global rescaling of the latent space. Execution-\
+
+\fs22\fsmilli11018 heavy templates such as 
+\fs21\fsmilli10909 pick_and_place 
+\fs22\fsmilli11018 and 
+\fs21\fsmilli10909 pick_heat_then_place 
+\fs22\fsmilli11018 undergo larger relative shifts,\
+
+\fs21\fsmilli10942 whereas observation-oriented templates remain more stable. Together, these results suggest that Interlat\
+
+\fs21\fsmilli10904 preserves the overall geometry of latent communications while inducing task-aware semantic alignment,\
+
+\fs21\fsmilli10953 enabling the actor agent to differentiate diverse reasoning paradigms without relying on explicit natural\
+
+\fs21\fsmilli10909 language communication.\
+
+\fs23\fsmilli11955 J Training Template\
+
+\fs22\fsmilli11018 We present an example in Figure \cf3 J \cf2 to illustrate how agents explore and solve tasks in Alfworld. After\
+
+\fs21\fsmilli10980 perceiving the environment, the agent executes an action, receives feedback from the environment, and\
+
+\fs21\fsmilli10876 then proceeds to the next step until the goal is accomplished. Figure \cf3 J \cf2 shows an example of how training\
+
+\fs21\fsmilli10909 24
+\fs24 \cf0 \page 
+\fs17\fsmilli8966 \cf2 Task template #Samples L R(median) \uc0\u961 = L/R\
+pick_and_place 848 1.742 8.347 0.209\
+heat_then_place 578 2.403 11.506 0.209\
+cool_then_place 429 1.329 13.111 0.101\
+look_at_obj 187 0.794 8.498 0.093\
+clean_then_place 632 0.989 17.839 0.055\
+look_in_recep 431 0.250 23.393 0.011\
+other 14 0.581 32.346 0.018\
+
+\fs19\fsmilli9963 Table 8: Quantitative centroid shift analysis for each task template.\
+
+\fs21\fsmilli10871 data is structured for the actor agent. We append either the latent communication or the natural-language\
+
+\fs21\fsmilli10909 plan after the instruction to facilitate inter-agent communication.\
+
+\fs17\fsmilli8966 \cf5 Conversations\
+
+\fs21\fsmilli10909 \cf2 Env\
+
+\fs22\fsmilli11018 You are in the middle of a room. Looking quickly around you,\
+you see a bathtubbasin 1, a cabinet 2, a cabinet 1, a countertop 1,\
+a garbagecan 1, a handtowelholder 1, a sinkbasin 1, a toilet 1, a\
+
+\fs21\fsmilli10909 toiletpaperhanger 1, and a towelholder 1.\
+Task: put a toiletpaper in toiletpaperhanger.\
+Agent\
+
+\fs22\fsmilli11018 Thought: I need to place a toilet paper roll on the toilet paper\
+
+\fs21\fsmilli10947 hanger. First, I should check if there\'92s already a roll on the hanger\
+
+\fs21\fsmilli10909 or if it\'92s empty.\
+Action: go to toiletpaperhanger 1\
+Env\
+Observation: On the toiletpaperhanger 1, you see nothing.\
+Agent\
+
+\fs21\fsmilli10887 Thought: The toilet paper hanger is empty, so I need to find a new\
+
+\fs21\fsmilli10909 roll of toilet paper to put on it.\
+Action: go to toilet 1\
+Env\
+per 1.\
+
+\fs21\fsmilli10805 Observation: On the toilet 1, you see a soapbottle 1, and a toiletpa-\
+
+\fs21\fsmilli10909 Agent\
+
+\fs21\fsmilli10800 Thought: I\'92ve found a toilet paper roll on the toilet. I should pick it\
+
+\fs21\fsmilli10909 up so I can place it on the hanger.\
+Action: take toiletpaper 1 from toilet 1\
+Env\
+Observation: You pick up the toiletpaper 1 from the toilet 1.\
+25
+\fs24 \cf0 \page 
+\fs21\fsmilli10909 \cf2 Agent\
+
+\fs22\fsmilli11002 Thought: Now that I have the toilet paper roll, I need to return to\
+
+\fs21\fsmilli10909 the toilet paper hanger to install it.\
+Action: go to toiletpaperhanger 1\
+Env\
+Observation: On the toiletpaperhanger 1, you see nothing.\
+Agent\
+
+\fs21\fsmilli10931 Thought: I\'92m back at the toilet paper hanger with the roll in hand.\
+
+\fs21\fsmilli10909 It\'92s time to put the toilet paper on the hanger.\
+Action: put toiletpaper 1 in/on toiletpaperhanger 1\
+
+\fs17\fsmilli8966 \cf5 Training Template for Actor Agent\
+
+\fs21\fsmilli10909 \cf2 <im_start>system\
+You are a helpful assistant. <im_end>\
+<im_start>user\
+
+\fs22\fsmilli11018 Interact with a household to solve a task. Imagine you are an intelligent agent in a household\
+
+\fs21\fsmilli10991 environment and your target is to perform actions to complete the task goal. At the beginning of\
+
+\fs21\fsmilli10800 your interactions, you will be given a detailed description of the current environment and your goal\
+
+\fs21\fsmilli10909 to accomplish.\
+
+\fs22\fsmilli11018 For each of your turns, you will be given the observation of the last turn. You should first think\
+about the current condition and plan for your future actions, and then output your action in this\
+
+\fs21\fsmilli10909 turn. Your output must strictly follow this format:"Thought: your thoughts.\
+Action: your next action".\
+The available actions are:\
+1. go to recep\
+2. task obj from recep\
+3. put obj in/on recep\
+4. open recep\
+5. close recep\
+6. toggle obj recep\
+7. clean obj with recep\
+8. heat obj with recep\
+9. cool obj with recep\
+where obj and recep correspond to objects and receptacles.\
+
+\fs21\fsmilli10882 After your each turn, the environment will give you immediate feedback based on which you plan\
+
+\fs21\fsmilli10816 your next few steps. if the envrionment output "Nothing happened", that means the previous action\
+
+\fs21\fsmilli10909 is invalid and you should try more options.\
+Your response should use the following format:\
+Thought: <your thoughts>\
+Action: <your next action>\
+
+\fs21\fsmilli10882 You are in the middle of a room. Looking quickly around you, you see a armchair 2, a armchair 1,\
+
+\fs21\fsmilli10925 a coffeetable 2, a coffeetable 1, a diningtable 1, a garbagecan 1, a sidetable 2, a sidetable 1, and a\
+
+\fs21\fsmilli10909 sofa 1.\
+Your task is to: find two newspaper and put them in armchair.\
+Now, you are given a step-by-step plan to complete this task as follow:\
+<bop>\
+26
+\fs24 \cf0 \page 
+\fs21\fsmilli10909 \cf2 Insert a latent communication or textual plan for inter-agent communication.\
+<eop>\
+<im_end>\
+<im_start>assistant\
+
+\fs21\fsmilli10947 Thought: To complete the task, I need to locate two newspapers and place them in an armchair. I\
+
+\fs21\fsmilli10909 should start by searching the nearby furniture for any newspapers.\
+Action: go to sofa 1 <im_end>\
+<im_start>user\
+Observation: On the sofa 1, you see a box 3, a box 2, a newspaper 2, and a pillow 1. <im_end>\
+<im_start>assistant\
+Thought: I\'92ve found one newspaper on sofa 1. I should pick it up to place it in the armchair later.\
+Action: take newspaper 2 from sofa 1 <im_end>\
+<im_start>user\
+Observation: You pick up the newspaper 2 from the sofa 1. <im_end>\
+<im_start>assistant\
+
+\fs22\fsmilli11018 Thought: With newspaper 2 in hand, I need to find the second newspaper. The dining table is\
+
+\fs21\fsmilli10909 another common place where newspapers might be found.\
+Action: go to dining table 1 <im_end>\
+<im_start>user\
+
+\fs21\fsmilli10996 Observation: On the dining table 1, you see a box 1, a credit card 2, a credit card 1, a laptop 1, a\
+
+\fs22\fsmilli11018 newspaper 1, a plate 3, a plate 1, a remote control 1, a statue 3, a statue 1, a tissue box 3, and a\
+
+\fs21\fsmilli10909 tissue box 1. <im_end>\
+<im_start>assistant\
+
+\fs21\fsmilli10920 There\'92s the second newspaper on the dining table. I should take it so I can place both newspapers\
+
+\fs21\fsmilli10909 in the armchair as instructed.\
+Action: take newspaper 1 from dining table 1 <im_end>\
+<im_start>user\
+Observation: You pick up the newspaper 1 from the dining table 1. <im_end>\
+<im_start>assistant\
+
+\fs21\fsmilli10805 Thought: With both newspapers now in my possession, I need to find an armchair to place them in.\
+
+\fs21\fsmilli10909 Action: go to armchair 1 <im_end>\
+<im_start>user\
+Observation: On the armchair 1, you see a keychain 1. <im_end>\
+<im_start>assistant\
+
+\fs21\fsmilli10800 Thought: The armchair has a keychain on it, but there\'92s enough space for the newspapers. I\'92ll place\
+
+\fs21\fsmilli10909 the first newspaper here.\
+Action: put newspaper 2 in/on armchair 1 <im_end>\
+<im_start>user\
+Observation: You put the newspaper 2 in/on the armchair 1. <im_end>\
+<im_start>assistant\
+
+\fs21\fsmilli10991 Thought: With the first newspaper placed, I need to put the second newspaper in the armchair to\
+
+\fs21\fsmilli10909 complete the task.\
+Action: put newspaper 1 in/on armchair 1 <im_end>\
+27
+\fs24 \cf0 \page 
+\fs21\fsmilli10909 \cf2 Algorithm 1 Two-Stage Training for Latent Communication\
+Require: Dataset D; actor M
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 ; teacher M
+\fs15\fsmilli7970 ins
+\fs21\fsmilli10909 ; boundary tokens <bop>, <eop>;\
+Require: replacement schedule r
+\fs15\fsmilli7970 t
+\fs21\fsmilli10909 ;\
+Require: loss weights (\uc0\u955 
+\fs15\fsmilli7970 CE
+\fs21\fsmilli10909 , \uc0\u955 
+\fs15\fsmilli7970 align
+\fs21\fsmilli10909 , \uc0\u955 
+\fs15\fsmilli7970 sep
+\fs21\fsmilli10909 )\
+Stage I: Teach the actor to consume latents (no compression)\
+
+\fs17\fsmilli8966 1: 
+\fs21\fsmilli10909 for epoch = 1 \uc0\u8594 E
+\fs15\fsmilli7970 1 
+\fs21\fsmilli10909 do\
+
+\fs17\fsmilli8966 2: 
+\fs21\fsmilli10909 for (x,y) \uc0\u8764 Ddo\
+
+\fs17\fsmilli8966 3: 
+\fs21\fsmilli10909 (H,P) \uc0\u8592 M
+\fs15\fsmilli7970 ins
+\fs21\fsmilli10909 (x) \uc0\u9655 data latents and plan from the frozen teacher\
+
+\fs17\fsmilli8966 4: 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 (r) 
+\fs21\fsmilli10909 \uc0\u8592 C
+\fs17\fsmilli8727 URRICULUM
+\fs21\fsmilli10909 (H,r
+\fs15\fsmilli7970 t
+\fs21\fsmilli10909 ) \uc0\u9655 random curriculum; length preserved\
+
+\fs17\fsmilli8966 5: 
+\fs21\fsmilli10909 E \uc0\u8592 [ e(x), e(<bop>), g(H
+\fs15\fsmilli7970 (r)
+\fs21\fsmilli10909 ), e(<eop>) ] \uc0\u9655 latent-conditioned input\
+
+\fs17\fsmilli8966 6: 
+\fs21\fsmilli10909 E
+\fs15\fsmilli7970 (plan) 
+\fs21\fsmilli10909 \uc0\u8592 [ e(x), e(<bop>), e(P), e(<eop>) ] \u9655 plan-only input\
+
+\fs17\fsmilli8966 7: 
+\fs21\fsmilli10909 S \uc0\u8592 S
+\fs17\fsmilli8727 UPERVISED
+\fs21\fsmilli10909 P
+\fs17\fsmilli8727 OSITIONS
+\fs21\fsmilli10909 (y) \uc0\u9655 token indices within the supervised window\
+
+\fs17\fsmilli8966 8: 
+\fs21\fsmilli10909 (z
+\fs15\fsmilli7970 (r)\
+A 
+\fs21\fsmilli10909 [S], p
+\fs15\fsmilli7970 (r)\
+A 
+\fs21\fsmilli10909 [S]) \uc0\u8592 F
+\fs17\fsmilli8727 ORWARD
+\fs21\fsmilli10909 (A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 , E, S) \uc0\u9655 teacher forcing\
+
+\fs17\fsmilli8966 9: 
+\fs21\fsmilli10909 (z
+\fs15\fsmilli7970 plan
+\fs21\fsmilli10909 [S], p
+\fs15\fsmilli7970 plan
+\fs21\fsmilli10909 [S]) \uc0\u8592 F
+\fs17\fsmilli8727 ORWARD
+\fs21\fsmilli10909 (A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 , E
+\fs15\fsmilli7970 (plan)
+\fs21\fsmilli10909 , S)\
+
+\fs17\fsmilli8966 10: 
+\fs21\fsmilli10909 sample\'98\
+H from another task/batch;\
+
+\fs17\fsmilli8966 11:
+\fs21\fsmilli10909 \'98\
+\'98\
+E \uc0\u8592 [ e(x), e(<bop>), g(\
+H), e(<eop>) ]\
+
+\fs17\fsmilli8966 12: 
+\fs21\fsmilli10909 (z
+\fs15\fsmilli7970 (neg)\
+A 
+\fs21\fsmilli10909 [S], p
+\fs15\fsmilli7970 (neg)\
+
+\fs21\fsmilli10909 \'98\
+
+\fs15\fsmilli7970 A 
+\fs21\fsmilli10909 [S]) \uc0\u8592 F
+\fs17\fsmilli8727 ORWARD
+\fs21\fsmilli10909 (A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 ,\
+E, S)\
+L
+\fs15\fsmilli7970 Stage I\
+total 
+\fs21\fsmilli10909 \uc0\u8592 TotalLoss
+\fs15\fsmilli7970 Stage I 
+\fs21\fsmilli10909 p
+\fs15\fsmilli7970 (r)\
+A 
+\fs21\fsmilli10909 [S], y[S], p
+\fs15\fsmilli7970 plan
+\fs21\fsmilli10909 [S],\
+
+\fs17\fsmilli8966 13:\
+
+\fs21\fsmilli10909 z
+\fs15\fsmilli7970 (r)\
+A 
+\fs21\fsmilli10909 [S], z
+\fs15\fsmilli7970 plan
+\fs21\fsmilli10909 [S], p
+\fs15\fsmilli7970 (neg)\
+A 
+\fs21\fsmilli10909 [S]; \uc0\u945 , \u946 , \u955 
+\fs15\fsmilli7970 CE
+\fs21\fsmilli10909 , \uc0\u955 
+\fs15\fsmilli7970 align
+\fs21\fsmilli10909 , \uc0\u955 
+\fs15\fsmilli7970 sep\
+
+\fs17\fsmilli8966 14: 
+\fs21\fsmilli10909 \uc0\u952 \u8592 \u952 \u8722 \u951 \u8711 
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 Stage I\
+total\
+
+\fs17\fsmilli8966 15: 
+\fs21\fsmilli10909 end for\
+
+\fs17\fsmilli8966 16: 
+\fs21\fsmilli10909 end for\
+Stage II: Train the reasoner to compress (freeze A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 )\
+
+\fs17\fsmilli8966 17: 
+\fs21\fsmilli10909 for epoch = 1 \uc0\u8594 E
+\fs15\fsmilli7970 2 
+\fs21\fsmilli10909 do\
+
+\fs17\fsmilli8966 18: 
+\fs21\fsmilli10909 for (x,y) \uc0\u8764 Ddo\
+
+\fs17\fsmilli8966 19: 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 K 
+\fs21\fsmilli10909 \uc0\u8592 M
+\fs15\fsmilli7970 \uc0\u981 
+\fs21\fsmilli10909 (x)\
+
+\fs17\fsmilli8966 20: 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 L 
+\fs21\fsmilli10909 \uc0\u8592 stopgrad M
+\fs15\fsmilli7970 ins
+\fs21\fsmilli10909 (x)\
+
+\fs17\fsmilli8966 21: 
+\fs21\fsmilli10909 E
+\fs15\fsmilli7970 (A) 
+\fs21\fsmilli10909 \uc0\u8592 [ e(x), e(<bop>), g(H
+\fs15\fsmilli7970 K
+\fs21\fsmilli10909 ), e(<eop>) ]\
+
+\fs17\fsmilli8966 22: 
+\fs21\fsmilli10909 E
+\fs15\fsmilli7970 (D) 
+\fs21\fsmilli10909 \uc0\u8592 [ e(x), e(<bop>), g(H
+\fs15\fsmilli7970 L
+\fs21\fsmilli10909 ), e(<eop>) ]\
+
+\fs17\fsmilli8966 23: 
+\fs21\fsmilli10909 (z
+\fs15\fsmilli7970 (A)
+\fs21\fsmilli10909 [S], p
+\fs15\fsmilli7970 (A)
+\fs21\fsmilli10909 [S]) \uc0\u8592 F
+\fs17\fsmilli8727 ORWARD
+\fs21\fsmilli10909 (A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 , E
+\fs15\fsmilli7970 (A)
+\fs21\fsmilli10909 , S) \uc0\u9655 no grad into A
+\fs15\fsmilli7970 \uc0\u952 \
+
+\fs17\fsmilli8966 24: 
+\fs21\fsmilli10909 (z
+\fs15\fsmilli7970 (D)
+\fs21\fsmilli10909 [S], p
+\fs15\fsmilli7970 (D)
+\fs21\fsmilli10909 [S]) \uc0\u8592 F
+\fs17\fsmilli8727 ORWARD
+\fs21\fsmilli10909 (A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 , E
+\fs15\fsmilli7970 (D)
+\fs21\fsmilli10909 , S) \uc0\u9655 stop-grad\
+
+\fs17\fsmilli8966 25: 
+\fs21\fsmilli10909 (z
+\fs15\fsmilli7970 (base)
+\fs21\fsmilli10909 [S], p
+\fs15\fsmilli7970 (base)
+\fs21\fsmilli10909 [S]) \uc0\u8592 F
+\fs17\fsmilli8727 ORWARD
+\fs21\fsmilli10909 (A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 , [ e(x) ], S) \uc0\u9655 context-only baseline; stop-grad\
+
+\fs17\fsmilli8966 26: 
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 Stage II\
+total 
+\fs21\fsmilli10909 \uc0\u8592 TotalLoss p
+\fs15\fsmilli7970 (A)
+\fs21\fsmilli10909 [S], y[S], p
+\fs15\fsmilli7970 (D)
+\fs21\fsmilli10909 [S], p
+\fs15\fsmilli7970 (base)
+\fs21\fsmilli10909 [S], w[S]; \uc0\u955 
+\fs15\fsmilli7970 CE
+\fs21\fsmilli10909 , \uc0\u955 
+\fs15\fsmilli7970 pref
+\fs21\fsmilli10909 , \uc0\u964 \
+
+\fs17\fsmilli8966 27: 
+\fs21\fsmilli10909 \uc0\u981 \u8592 \u981 \u8722 \u951 \u8711 
+\fs15\fsmilli7970 \uc0\u981 
+\fs21\fsmilli10909 L
+\fs15\fsmilli7970 Stage II\
+total\
+
+\fs17\fsmilli8966 28: 
+\fs21\fsmilli10909 end for\
+
+\fs17\fsmilli8966 29: 
+\fs21\fsmilli10909 end for\
+Algorithm 2 Inference with Latent Communication (training-free or trained)\
+Require: Dataset D; input x; reasoner M
+\fs15\fsmilli7970 \uc0\u981 
+\fs21\fsmilli10909 ; actor A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 ; boundary tokens; target length K\
+
+\fs17\fsmilli8966 1: 
+\fs21\fsmilli10909 H
+\fs15\fsmilli7970 K 
+\fs21\fsmilli10909 \uc0\u8592 M
+\fs15\fsmilli7970 \uc0\u981 
+\fs21\fsmilli10909 (x)\
+
+\fs17\fsmilli8966 2: 
+\fs21\fsmilli10909 E \uc0\u8592 [ e(x), e(<bop>), g(H
+\fs15\fsmilli7970 K
+\fs21\fsmilli10909 ), e(<eop>) ]\
+
+\fs17\fsmilli8966 3:
+\fs21\fsmilli10909 \'88\
+y\uc0\u8592 Decode A
+\fs15\fsmilli7970 \uc0\u952 
+\fs21\fsmilli10909 , E\
+
+\fs17\fsmilli8966 4: 
+\fs21\fsmilli10909 return\'88\
+y\
+28}

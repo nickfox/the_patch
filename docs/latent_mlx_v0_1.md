@@ -23,8 +23,9 @@ This implementation runs on MLX (Apple's machine learning framework) using Qwen3
 
 | Configuration | Accuracy | Time/Sample | Memory |
 |---|---|---|---|
-| MLX 4-bit, sequential, latent_steps=10 | 4/5 (80%) | 11.7s | 5.6 GB |
+| MLX 4-bit, sequential, latent_steps=10 | 5/5 (100%) | 13.4s | 5.6 GB |
 | MLX 4-bit, hierarchical, latent_steps=10 | 2/5 (40%) | 12.2s | 5.6 GB |
+| MLX cross-model Qwen→Gemma, sequential | 1/5 (20%) | 5.2s | ~4 GB |
 | PyTorch fp16/MPS, sequential, latent_steps=10 | 5/5 (100%) | 64.1s | 13.2 GB |
 
 
@@ -37,10 +38,12 @@ mlxmas/
 ├── run.py           # Entry point: model loading, evaluation loop, CLI args
 ├── latent_comm.py   # Core algorithm: alignment, latent thoughts, KV transfer
 ├── prompts.py       # Agent prompt builders (sequential + hierarchical)
-└── utils.py         # Answer extraction (boxed format), normalization
+├── utils.py         # Answer extraction (boxed format), normalization
+├── cross_align.py   # Cross-model alignment matrix computation and projection
+└── test_cross.py    # Cross-model test: Qwen→Gemma latent communication
 ```
 
-Total: ~400 lines. No dependencies beyond `mlx`, `mlx-lm`, `datasets`.
+Total: ~650 lines. No dependencies beyond `mlx`, `mlx-lm`, `datasets`.
 
 ### Agent Pipeline
 
@@ -258,6 +261,39 @@ Both implementations run the same algorithm on the same model (Qwen3-4B) on the 
 The MLX version is architecturally simpler. Qwen3's `input_embeddings` parameter eliminates the need for any model internals hacking. The PyTorch version had to deal with transformers 5.4's `DynamicCache` API changes, `cache_position` conflicts, and deprecated `torch_dtype` parameters.
 
 
+## Cross-Model Latent Communication
+
+### How It Works
+
+When two different model families need to communicate in latent space, the KV cache can't be shared directly — different architectures have different head counts, head dimensions, and layer counts. Instead, we collect the sender's hidden states, project them through a cross-alignment matrix, and feed them as input embeddings to the receiver.
+
+**Cross-alignment matrix computation:**
+
+1. Find tokens that exist in both vocabularies (25,139 shared tokens between Qwen3 and Gemma-2)
+2. Embed each shared token through both models' embedding layers — these are paired anchor points
+3. Compute a least-squares projection $W_{cross}: \mathbb{R}^{D_{sender}} \rightarrow \mathbb{R}^{D_{receiver}}$ that minimizes reconstruction error on the anchor pairs
+4. Apply norm-matching to the receiver's embedding scale
+
+**File:** `mlxmas/cross_align.py`
+
+### Verified Cross-Model Pipeline
+
+Qwen3-4B (sender) → alignment matrix (2560→2304) → Gemma-2-2B (receiver):
+
+```
+Question → Qwen [planner → critic → refiner] → 33 self-aligned hidden states
+         → cross-project to Gemma's space (2560 → 2304)
+         → Gemma forward pass with projected embeddings
+         → Gemma generates text answer
+```
+
+Alignment quality: 0.68 cosine similarity (linear projection, no training). The pipeline produces coherent, well-structured text output from Gemma, confirming that the projected latent states are interpretable. However, multi-step reasoning accuracy degrades (1/5 GSM8K) — the 32% directional information loss in the linear projection is enough to disrupt the detailed planning context that multi-step math problems require. Errors are logical (missing a subtraction step, dropping a multiplier), not syntactic — indicating partial but incomplete transfer of reasoning structure. A trained adapter (as in the Interlat paper) would likely improve this significantly.
+
+### MLX Implementation Note: Gemma-2
+
+Gemma-2's MLX model does not accept `input_embeddings`. The cross-model pipeline manually replicates the forward pass, bypassing `embed_tokens` and applying Gemma-2's embedding scaling ($\times \sqrt{2304}$) and logit soft-capping. See `gemma_forward_with_embeddings()` in `test_cross.py`.
+
+
 ## Relevance to SoulMCP
 
 ### Language Is Collapse
@@ -348,5 +384,6 @@ This venv contains both PyTorch (for the LatentMAS/ directory) and MLX (for mlxm
 
 1. **Full precision comparison**: Run `Qwen/Qwen3-4B` (non-quantized) on MLX to get an apples-to-apples accuracy comparison with the PyTorch fp16 run.
 2. **Tune latent_steps**: The paper suggests 0–80 range. Higher values may improve reasoning on harder tasks (AIME, GPQA) at the cost of longer KV cache and more compute.
-3. **Cross-process KV transfer**: Serialize KV cache states and transfer between two separate MLX processes — the precursor to SoulMCP mother-child communication.
-4. **EBM integration**: The latent thought loop produces hidden states at every step. These are the exact tensors the EBM Hybrid project trains on — the alignment matrix provides a natural bridge between the two projects.
+3. **Cross-model pipeline**: Each model takes a different cognitive role — e.g., Qwen as planner → Gemma as critic → Model C as refiner → Model D as judger. Cross-alignment matrices already verified at 0.68 cosine similarity. Infrastructure exists in `cross_align.py` and `test_cross.py`.
+4. **Cross-process KV transfer**: Serialize KV cache states and transfer between two separate MLX processes — the precursor to SoulMCP mother-child communication.
+5. **EBM integration**: The latent thought loop produces hidden states at every step. These are the exact tensors the EBM Hybrid project trains on — the alignment matrix provides a natural bridge between the two projects.
