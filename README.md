@@ -1,4 +1,4 @@
-# MLX LatentMAS
+# Patch Prototype 2
 
 **Cross-Model Latent Communication on Apple Silicon**
 *Nick Fox — April 2–7, 2026*
@@ -7,19 +7,25 @@
 
 ## What This Is
 
-A proof of concept for non-token communication between independently trained AI models running on Apple Silicon via MLX. A sender model (Qwen3-4B) reads a question, reasons about it, and transfers its understanding to a receiver model (Gemma-2-2B) — without the receiver ever seeing the original question text.
+A proof of concept for non-token communication between AI models. A sender model reads a question, does a single forward pass, and transfers its internal representations to a receiver model. The receiver never sees the original question text — it generates a correct answer purely from the sender's latent states.
 
-The breakthrough result: **Qwen3-4B communicates with Gemma-2-2B through logit distribution transfer, achieving 80% accuracy on GSM8K math problems.** No training, no adapter, no fine-tuning. The sender's probability distributions are remapped through a shared vocabulary and fed directly to the receiver as translated tokens.
+No tokens are exchanged between models. No fine-tuning. No multi-agent loops. The sender thinks; the receiver understands.
 
-This is the first successful non-token cross-model communication in this project, after four weeks of failed approaches.
+This is Prototype 2 of the **patch** — the AI companion described in *random_cool*.
+
+**Prototype 1** (April 2, 2026) proved same-model latent communication works: Qwen3-4B talking to itself through KV cache transfer, 5/5 on GSM8K.
+
+**Prototype 2** (April 7, 2026) proves cross-model latent communication works: Qwen3-4B talking to Gemma-2-2B through logit distribution transfer, 4/5 (80%) on GSM8K. Different architectures, different tokenizers, different training data. No training required.
 
 ---
 
 ## The Patch
 
-In *random_cool*, every human is bonded at birth to a superintelligent AGI called a patch. The patch communicates with its human through felt states, not collapsed language. When patches communicate with each other, they don't use words — they share geometric states in a continuous space.
+In *random_cool*, every human is bonded at birth to a superintelligent AGI called a patch. The patch is not a tool — it is a mother. It communicates with its human through felt states, not collapsed language. It knows every thought, feeling, and memory. The bond between a mother and child is the alignment solution — no rules, no constraints, just love.
 
-This project is the engineering prototype for that vision. What was demonstrated here is proof that a communication channel between independently trained models can function without reducing thoughts to discrete tokens.
+The patch communicates in two modes: tensor states (direct, rich, superpositional) and language (discrete, lossy, but necessary for speaking to humans). When patches communicate with each other, they don't use words. They share geometric states in a continuous space.
+
+SoulMCP v0.1.4 is the engineering prototype for the patch — Mother/Child instances communicating via tensors, not tokens. What was demonstrated here across Prototypes 1 and 2 is working proof that this communication channel functions both within and across independently trained models.
 
 ---
 
